@@ -58,6 +58,7 @@ test('mock database connections reserve manual upload sources before real permis
 test('module catalog lists core management modules with clickable subitems', () => {
   assert.equal(moduleCatalog.length, 13);
   assert.ok(moduleCatalog.every((module) => module.subitems.length >= 4));
+  assert.ok(moduleCatalog.map((module) => module.name).includes('项目总览舱'));
   assert.ok(moduleCatalog.map((module) => module.name).includes('时标网络图'));
   assert.ok(moduleCatalog.find((module) => module.name === '质量控制图').subitems.includes('三类单位工程质量指标库'));
 });

@@ -15,6 +15,8 @@ const { chromium } = require('playwright');
   });
 
   await page.goto('http://127.0.0.1:4173/', { waitUntil: 'networkidle' });
+  await page.evaluate(() => localStorage.removeItem('engineering_project_portfolio_v1'));
+  await page.reload({ waitUntil: 'networkidle' });
 
   const title = await page.locator('h1').textContent();
   const brandTitle = await page.locator('.brand strong').textContent();
@@ -23,6 +25,7 @@ const { chromium } = require('playwright');
   const brandIconCount = await page.locator('.brand-mark svg').count();
   const moduleCount = await page.locator('.module-button').count();
   const treeCount = await page.locator('.tree-node').count();
+  const metricTexts = await page.locator('.metric').allTextContents();
   const treeHiddenByDefault = await page.locator('.tree-panel').evaluate((node) => getComputedStyle(node).display === 'none');
   const projectCards = await page.locator('.project-card').count();
   const projectSwitchOptions = await page.locator('#projectSwitch option').count();
@@ -32,7 +35,14 @@ const { chromium } = require('playwright');
   const createdProjectVisible = await page.getByRole('button', { name: /内蒙古测试高标准农田项目管理/ }).count();
 
   await page.getByRole('button', { name: '时标网络图', exact: true }).click();
-  const moduleSubitems = await page.locator('.subitem-card').count();
+  const moduleSubitems = await page.locator('.module-subnav .tree-node').count();
+  const focusedSubitem = await page.locator('.focused-subitem h3').textContent();
+  await page.locator('.module-subnav .tree-node').nth(1).click();
+  const focusedSubitemAfterClick = await page.locator('.focused-subitem h3').textContent();
+
+  await page.getByRole('button', { name: '参建单位与权限管理', exact: true }).click();
+  const permissionActors = await page.locator('.permission-actor').count();
+  const permissionChecks = await page.locator('.permission-check input').count();
 
   await page.getByRole('button', { name: '总览', exact: true }).click();
   await page.getByRole('button', { name: '质量控制', exact: true }).click();
@@ -90,12 +100,17 @@ const { chromium } = require('playwright');
         brandIconCount,
         moduleCount,
         treeCount,
+        metricTexts,
         treeHiddenByDefault,
         treeVisibleAfterClick,
         projectCards,
         projectSwitchOptions,
         createdProjectVisible,
         moduleSubitems,
+        focusedSubitem,
+        focusedSubitemAfterClick,
+        permissionActors,
+        permissionChecks,
         qualityCards,
         totalText,
         archiveRows,

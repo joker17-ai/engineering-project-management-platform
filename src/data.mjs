@@ -210,7 +210,7 @@ export const mockDatabaseConnections = [
 export const moduleCatalog = [
   {
     id: 'dashboard',
-    name: '项目总览驾驶舱',
+    name: '项目总览舱',
     purpose: '集中展示质量、安全、进度、投资、档案和接口资料库的关键状态。',
     subitems: ['项目总体状态', '关键节点预警', '质量问题汇总', '安全隐患汇总', '投资完成概览', '待审批资料'],
   },

@@ -2,7 +2,6 @@ import {
   archiveChecklist,
   calculateInvestmentTotal,
   calculateProgressPercent,
-  dashboardStats,
   flattenProjectTree,
   mapStoragePlan,
   mockDatabaseConnections,
@@ -32,6 +31,8 @@ const state = {
   selectedNode: null,
   activeTab: 'overview',
   activeModuleId: 'dashboard',
+  activeSubitemIndex: 0,
+  activePermissionActor: '项目法人',
   treeVisible: false,
 };
 
@@ -62,13 +63,14 @@ function renderModules() {
     button.addEventListener('click', () => {
       state.activeModuleId = button.dataset.moduleId;
       state.activeTab = 'module';
+      state.activeSubitemIndex = 0;
       state.treeVisible = state.activeModuleId === 'tree';
       renderModules();
       renderTabs();
       renderShellLayout();
       renderProjectTree();
       renderContent();
-      renderModuleDetail();
+      renderSidePanel();
     });
   });
 }
@@ -109,12 +111,14 @@ function getProjectScopedId(connectionId) {
 
 function renderStats() {
   const statsGrid = document.querySelector('#statsGrid');
+  const currentTreeNodes = flattenProjectTree(currentProject().tree);
   const stats = [
-    { label: '平台项目数量', value: state.projects.length, suffix: '个项目' },
-    ...dashboardStats,
+    { label: '项目节点容量', value: currentTreeNodes.length, suffix: '已建节点 / 30000 预留' },
+    { label: '一级栏目', value: moduleCatalog.length, suffix: '个动态栏目' },
+    { label: '质量范围', value: Object.keys(qualityScopes).length, suffix: '类单位工程' },
+    { label: '上图入库', value: mapStoragePlan.interfaceIntegration ? 1 : 0, suffix: mapStoragePlan.interfaceIntegration ? '接口已对接' : '接口待对接' },
   ];
   statsGrid.innerHTML = stats
-    .slice(0, 4)
     .map(
       (stat) => `
         <article class="metric">
@@ -150,7 +154,7 @@ function renderProjectTree() {
     button.addEventListener('click', () => {
       state.selectedNode = nodes.find((node) => node.id === button.dataset.nodeId);
       renderProjectTree();
-      renderNodeDetail();
+      renderSidePanel();
     });
   });
 }
@@ -172,7 +176,7 @@ function renderTabs() {
       state.activeTab = button.dataset.tabId;
       renderTabs();
       renderContent();
-      renderNodeDetail();
+      renderSidePanel();
     });
   });
 }
@@ -379,6 +383,11 @@ function renderInterfaces() {
 
 function renderModuleDetailView() {
   const module = moduleCatalog.find((item) => item.id === state.activeModuleId) ?? moduleCatalog[0];
+  const subitem = module.subitems[state.activeSubitemIndex] ?? module.subitems[0];
+  if (module.id === 'participants') {
+    return renderPermissionManager(module);
+  }
+
   return `
     <section class="module-detail-view">
       <div class="module-hero">
@@ -386,18 +395,90 @@ function renderModuleDetailView() {
         <h2>${module.name}</h2>
         <p>${module.purpose}</p>
       </div>
-      <div class="subitem-grid">
-        ${module.subitems
-          .map(
-            (item, index) => `
-              <button class="subitem-card" type="button">
-                <span>${String(index + 1).padStart(2, '0')}</span>
-                <strong>${item}</strong>
-                <small>点击后可继续挂接资料、责任单位、审批状态和虚拟数据库记录</small>
-              </button>
-            `,
-          )
-          .join('')}
+      <div class="focused-subitem">
+        <span>${String(state.activeSubitemIndex + 1).padStart(2, '0')}</span>
+        <h3>${subitem}</h3>
+        <p>该二级目录由右侧竖向目录选择。后续可继续挂接资料、责任单位、审批状态、虚拟数据库记录，并扩展三级子项。</p>
+      </div>
+      <div class="view-grid">
+        <article class="card">
+          <h3>资料挂接</h3>
+          <ul>
+            <li>图纸、照片、表格、报告可归属到当前二级目录</li>
+            <li>上传资料按当前项目隔离保存</li>
+          </ul>
+        </article>
+        <article class="card">
+          <h3>责任与审批</h3>
+          <ul>
+            <li>可绑定责任单位、审核人和审批状态</li>
+            <li>后续接入真实流程后按项目权限控制</li>
+          </ul>
+        </article>
+        <article class="card">
+          <h3>三级扩展</h3>
+          <ul>
+            <li>查看、填报、审批、导出、数据库记录均可继续细化</li>
+            <li>由平台管理者统一配置权限范围</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+  `;
+}
+
+function renderPermissionManager(module) {
+  const actors = module.subitems;
+  if (!actors.includes(state.activePermissionActor)) {
+    state.activePermissionActor = actors[0];
+  }
+  const scopeModules = moduleCatalog.filter((item) => item.id !== 'tree');
+
+  return `
+    <section class="module-detail-view">
+      <div class="module-hero">
+        <span>平台管理者权限设置</span>
+        <h2>${state.activePermissionActor}</h2>
+        <p>权限由平台管理者执行，范围覆盖一级栏目、二级目录，以及二级目录下的查看、填报、审批、导出等三级动作。</p>
+      </div>
+      <div class="permission-layout">
+        <div class="permission-actors">
+          ${actors
+            .map(
+              (actor, index) => `
+                <button class="permission-actor ${actor === state.activePermissionActor ? 'active' : ''}" data-actor="${actor}" type="button">
+                  <span>${String(index + 1).padStart(2, '0')}</span>
+                  <strong>${actor}</strong>
+                </button>
+              `,
+            )
+            .join('')}
+        </div>
+        <div class="permission-scopes">
+          ${scopeModules
+            .map(
+              (scope) => `
+                <article class="permission-scope">
+                  <div>
+                    <strong>${scope.name}</strong>
+                    <span>${scope.subitems.length} 个二级目录</span>
+                  </div>
+                  ${scope.subitems
+                    .slice(0, 4)
+                    .map(
+                      (subitem) => `
+                        <label class="permission-check">
+                          <input type="checkbox" checked />
+                          <span>${subitem}：查看 / 填报 / 审批 / 导出</span>
+                        </label>
+                      `,
+                    )
+                    .join('')}
+                </article>
+              `,
+            )
+            .join('')}
+        </div>
       </div>
     </section>
   `;
@@ -416,9 +497,30 @@ function renderContent() {
   };
   contentView.innerHTML = renderers[state.activeTab]();
   bindProjectDashboard();
+  bindModuleSubitems();
+  bindPermissionActors();
   if (state.activeTab === 'interfaces') {
     bindUploadControls();
   }
+}
+
+function bindModuleSubitems() {
+  document.querySelectorAll('[data-subitem-index]').forEach((button) => {
+    button.addEventListener('click', () => {
+      state.activeSubitemIndex = Number(button.dataset.subitemIndex);
+      renderContent();
+      renderSidePanel();
+    });
+  });
+}
+
+function bindPermissionActors() {
+  document.querySelectorAll('[data-actor]').forEach((button) => {
+    button.addEventListener('click', () => {
+      state.activePermissionActor = button.dataset.actor;
+      renderContent();
+    });
+  });
 }
 
 function bindProjectDashboard() {
@@ -461,18 +563,38 @@ function renderNodeDetail() {
   `;
 }
 
-function renderModuleDetail() {
+function renderModuleSideNav() {
   const module = moduleCatalog.find((item) => item.id === state.activeModuleId) ?? moduleCatalog[0];
   const selectedBadge = document.querySelector('#selectedBadge');
   const detail = document.querySelector('#nodeDetail');
-  selectedBadge.textContent = '栏目';
+  selectedBadge.textContent = '二级目录';
   detail.innerHTML = `
     <h2>${module.name}</h2>
-    <div class="detail-kv"><span>栏目编号</span><strong>${module.id}</strong></div>
-    <div class="detail-kv"><span>子项数量</span><strong>${module.subitems.length}</strong></div>
-    <div class="detail-kv"><span>数据来源</span><strong>工程本体平台项目数据</strong></div>
-    <div class="detail-kv"><span>管理方式</span><strong>点击栏目跳转，子项继续挂接数据库记录</strong></div>
+    <div class="module-subnav">
+      ${module.subitems
+        .map(
+          (item, index) => `
+            <button class="tree-node ${index === state.activeSubitemIndex ? 'active' : ''}" data-subitem-index="${index}" type="button">
+              <span class="tree-node-title">${String(index + 1).padStart(2, '0')} ${item}</span>
+              <span class="node-meta">
+                <span>二级目录</span>
+                <span>可扩展三级</span>
+              </span>
+            </button>
+          `,
+        )
+        .join('')}
+    </div>
   `;
+  bindModuleSubitems();
+}
+
+function renderSidePanel() {
+  if (state.activeModuleId === 'tree' && state.treeVisible) {
+    renderNodeDetail();
+    return;
+  }
+  renderModuleSideNav();
 }
 
 function boot() {
@@ -487,7 +609,7 @@ function renderAll() {
   renderProjectTree();
   renderTabs();
   renderContent();
-  renderNodeDetail();
+  renderSidePanel();
 }
 
 boot();
