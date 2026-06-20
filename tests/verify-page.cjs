@@ -26,6 +26,8 @@ const { chromium } = require('playwright');
   const moduleCount = await page.locator('.module-button').count();
   const treeCount = await page.locator('.tree-node').count();
   const metricTexts = await page.locator('.metric').allTextContents();
+  const currentUnitWork = await page.locator('#currentUnitWork').textContent();
+  const currentDivisionWork = await page.locator('#currentDivisionWork').textContent();
   const treeHiddenByDefault = await page.locator('.tree-panel').evaluate((node) => getComputedStyle(node).display === 'none');
   const projectCards = await page.locator('.project-card').count();
   const projectSwitchOptions = await page.locator('#projectSwitch option').count();
@@ -50,6 +52,7 @@ const { chromium } = require('playwright');
 
   await page.getByRole('button', { name: '进度投资', exact: true }).click();
   const totalText = await page.locator('.investment-total').textContent();
+  const progressHeaders = await page.locator('.content-view thead th').allTextContents();
 
   await page.getByRole('button', { name: '档案资料', exact: true }).click();
   const archiveRows = await page.locator('.content-view tbody tr').count();
@@ -101,6 +104,8 @@ const { chromium } = require('playwright');
         moduleCount,
         treeCount,
         metricTexts,
+        currentUnitWork,
+        currentDivisionWork,
         treeHiddenByDefault,
         treeVisibleAfterClick,
         projectCards,
@@ -113,6 +118,7 @@ const { chromium } = require('playwright');
         permissionChecks,
         qualityCards,
         totalText,
+        progressHeaders,
         archiveRows,
         mapCards,
         interfaceCards,

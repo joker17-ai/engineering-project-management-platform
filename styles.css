@@ -220,14 +220,22 @@ button {
 }
 
 .workspace-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: 250px minmax(220px, 1fr) minmax(250px, auto);
   align-items: center;
-  justify-content: space-between;
-  gap: 24px;
+  gap: 18px;
   padding: 22px;
   border: 1px solid var(--line-soft);
   background: linear-gradient(135deg, rgba(18, 24, 27, 0.94), rgba(7, 9, 10, 0.82));
   box-shadow: var(--shadow);
+}
+
+.admin-shell.tree-open .workspace-header {
+  grid-template-columns: 250px minmax(0, 1fr);
+}
+
+.admin-shell.tree-open .header-context {
+  grid-column: 1 / -1;
 }
 
 .eyebrow {
@@ -237,27 +245,54 @@ button {
 
 h1 {
   margin: 0;
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 800;
   letter-spacing: 0;
+  overflow-wrap: anywhere;
 }
 
-.header-status {
-  min-width: 250px;
+.header-project-picker {
   padding: 14px;
   border: 1px solid rgba(96, 211, 148, 0.32);
   background: rgba(96, 211, 148, 0.08);
   border-radius: 8px;
 }
 
-.header-status span,
-.header-status strong {
+.header-project-picker span,
+.header-context span,
+.header-context strong {
   display: block;
 }
 
-.header-status span {
+.header-project-picker span,
+.header-context span {
   color: var(--muted);
   font-size: 12px;
+}
+
+.header-title-block {
+  min-width: 0;
+}
+
+.header-context {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(112px, 1fr));
+  gap: 10px;
+}
+
+.header-context div {
+  min-height: 64px;
+  padding: 11px;
+  border: 1px solid var(--line-soft);
+  background: rgba(255, 255, 255, 0.035);
+  border-radius: 8px;
+}
+
+.header-context strong {
+  margin-top: 6px;
+  color: var(--text);
+  font-size: 14px;
+  overflow-wrap: anywhere;
 }
 
 .project-switch,

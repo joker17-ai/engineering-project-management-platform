@@ -112,10 +112,13 @@ function getProjectScopedId(connectionId) {
 function renderStats() {
   const statsGrid = document.querySelector('#statsGrid');
   const currentTreeNodes = flattenProjectTree(currentProject().tree);
+  const unitWorkCount = countNodesByType(currentTreeNodes, '单位工程');
+  const divisionWorkCount = countNodesByType(currentTreeNodes, '分部工程');
+  const cellWorkCount = countNodesByType(currentTreeNodes, '单元工程');
   const stats = [
-    { label: '项目节点容量', value: currentTreeNodes.length, suffix: '已建节点 / 30000 预留' },
-    { label: '一级栏目', value: moduleCatalog.length, suffix: '个动态栏目' },
-    { label: '质量范围', value: Object.keys(qualityScopes).length, suffix: '类单位工程' },
+    { label: '单位工程数量', value: unitWorkCount, suffix: `完成 ${calculateUnitWorkCompletion()}%` },
+    { label: '分部工程数量', value: divisionWorkCount, suffix: `完成 ${calculateNodeCompletion(currentTreeNodes, '分部工程')}%` },
+    { label: '单元工程数量', value: cellWorkCount, suffix: `完成 ${calculateNodeCompletion(currentTreeNodes, '单元工程')}%` },
     { label: '上图入库', value: mapStoragePlan.interfaceIntegration ? 1 : 0, suffix: mapStoragePlan.interfaceIntegration ? '接口已对接' : '接口待对接' },
   ];
   statsGrid.innerHTML = stats
@@ -129,6 +132,33 @@ function renderStats() {
       `,
     )
     .join('');
+}
+
+function countNodesByType(nodes, type) {
+  return nodes.filter((node) => node.type === type).length;
+}
+
+function calculateUnitWorkCompletion() {
+  const planned = progressItems.reduce((total, item) => total + item.plannedQuantity, 0);
+  const completed = progressItems.reduce((total, item) => total + item.completedQuantity, 0);
+  return planned === 0 ? 0 : Math.round((completed / planned) * 100);
+}
+
+function calculateNodeCompletion(nodes, type) {
+  const scopedNodes = nodes.filter((node) => node.type === type);
+  if (scopedNodes.length === 0) return 0;
+  const completedNodes = scopedNodes.filter((node) => ['已完成', '已验收', '已归档'].includes(node.status));
+  return Math.round((completedNodes.length / scopedNodes.length) * 100);
+}
+
+function findNodeAncestor(node, type) {
+  const nodes = flattenProjectTree(currentProject().tree);
+  let current = node;
+  while (current) {
+    if (current.type === type) return current.name;
+    current = nodes.find((item) => item.id === current.parentId);
+  }
+  return nodes.find((item) => item.type === type)?.name ?? '未选择';
 }
 
 function renderProjectTree() {
@@ -154,6 +184,7 @@ function renderProjectTree() {
     button.addEventListener('click', () => {
       state.selectedNode = nodes.find((node) => node.id === button.dataset.nodeId);
       renderProjectTree();
+      renderHeader();
       renderSidePanel();
     });
   });
@@ -262,8 +293,8 @@ function renderProgress() {
     <table class="table">
       <thead>
         <tr>
-          <th>单位工程</th>
-          <th>清单项目</th>
+          <th>单元过程编号</th>
+          <th>单元工程</th>
           <th>计划/完成</th>
           <th>投标单价</th>
           <th>完成产值</th>
@@ -277,7 +308,7 @@ function renderProgress() {
             const output = item.completedQuantity * item.tenderUnitPrice;
             return `
               <tr>
-                <td>${item.unitWork}</td>
+                <td>${item.id.toUpperCase()}</td>
                 <td>${item.item}</td>
                 <td>
                   ${item.completedQuantity}/${item.plannedQuantity} ${item.unit}
@@ -616,8 +647,10 @@ boot();
 
 function renderHeader() {
   const project = currentProject();
+  const currentNode = state.selectedNode ?? flattenProjectTree(project.tree)[0];
   document.querySelector('#currentProjectName').textContent = project.name;
-  document.querySelector('#currentProjectMeta').textContent = `多项目统一管理平台 · 当前项目：${project.name}`;
+  document.querySelector('#currentUnitWork').textContent = findNodeAncestor(currentNode, '单位工程');
+  document.querySelector('#currentDivisionWork').textContent = findNodeAncestor(currentNode, '分部工程');
   document.querySelector('#projectSwitch').innerHTML = state.projects
     .map((item) => `<option value="${item.id}" ${item.id === state.activeProjectId ? 'selected' : ''}>${item.name}</option>`)
     .join('');
