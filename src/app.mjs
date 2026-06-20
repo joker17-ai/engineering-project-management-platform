@@ -15,7 +15,7 @@ import {
 const tabs = [
   { id: 'overview', label: '总览' },
   { id: 'quality', label: '质量控制' },
-  { id: 'progress', label: '进度投资' },
+  { id: 'progress', label: '进度控制' },
   { id: 'archive', label: '档案资料' },
   { id: 'map', label: '上图入库' },
   { id: 'interfaces', label: '接口资料库' },
@@ -161,6 +161,16 @@ function findNodeAncestor(node, type) {
   return nodes.find((item) => item.type === type)?.name ?? '未选择';
 }
 
+function getCellWorkRows() {
+  return flattenProjectTree(currentProject().tree)
+    .filter((node) => node.type === '单元工程')
+    .map((node, index) => ({
+      code: `DY-${String(index + 1).padStart(3, '0')}`,
+      name: node.name,
+      status: node.status === '施工中' ? '已开工' : '未开工',
+    }));
+}
+
 function renderProjectTree() {
   const nodes = flattenProjectTree(currentProject().tree);
   const tree = document.querySelector('#projectTree');
@@ -213,57 +223,30 @@ function renderTabs() {
 }
 
 function renderOverview() {
+  const rows = getCellWorkRows();
   return `
-    <section class="project-command">
-      <div>
-        <span class="eyebrow">项目组合管理</span>
-        <h2>一个平台同时管理多个工程项目</h2>
-        <p>项目名称由你在这里手动创建。每一个项目都会形成自己独立的一套项目结构树、资料库、质量安全进度投资和档案管理数据。</p>
-      </div>
-      <form id="projectCreateForm" class="project-create-form">
-        <input id="projectNameInput" type="text" placeholder="请输入项目名称，如：内蒙古*****高标准农田项目管理" />
-        <button class="upload-button" type="submit">创建项目</button>
-      </form>
-    </section>
-    <div class="project-card-grid">
-      ${state.projects
-        .map(
-          (project) => `
-            <button class="project-card ${project.id === state.activeProjectId ? 'active' : ''}" data-project-id="${project.id}" type="button">
-              <span>${project.region}</span>
-              <strong>${project.name}</strong>
-              <small>${project.stage} · ${flattenProjectTree(project.tree).length} 个结构节点</small>
-            </button>
-          `,
-        )
-        .join('')}
-    </div>
-    <div class="view-grid">
-      <article class="card">
-        <h3>当前项目管理范围</h3>
-        <ul>
-          <li>优先做高标准农田项目场景</li>
-          <li>先做电脑端管理后台</li>
-          <li>上图入库只做字段和资料准备</li>
-        </ul>
-      </article>
-      <article class="card">
-        <h3>三类高频单位工程</h3>
-        <ul>
-          <li>灌溉与排水工程</li>
-          <li>田间道路工程</li>
-          <li>田块整治工程</li>
-        </ul>
-      </article>
-      <article class="card">
-        <h3>工程本体关系</h3>
-        <ul>
-          <li>项目树承载节点扩展</li>
-          <li>质量、安全、进度、投资挂接到节点</li>
-          <li>档案和取证资料形成闭环</li>
-        </ul>
-      </article>
-    </div>
+    <table class="table unit-overview-table">
+      <thead>
+        <tr>
+          <th>单元工程编号</th>
+          <th>单元工程名称</th>
+          <th>开工状态</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows
+          .map(
+            (row) => `
+              <tr>
+                <td>${row.code}</td>
+                <td>${row.name}</td>
+                <td><span class="status ${row.status === '已开工' ? 'ok' : 'warning'}">${row.status}</span></td>
+              </tr>
+            `,
+          )
+          .join('')}
+      </tbody>
+    </table>
   `;
 }
 

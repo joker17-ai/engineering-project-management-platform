@@ -136,17 +136,17 @@ export const progressItems = [
 ];
 
 export const archiveChecklist = [
-  { name: '项目正式立项批复文件', owner: '项目法人', status: '已归档' },
-  { name: '初步设计及批复材料', owner: '设计单位', status: '已归档' },
-  { name: '单位工程/分部工程/单元工程划分清单', owner: '监理公司', status: '待审批' },
-  { name: '项目区地块空间矢量坐标', owner: '测绘单位', status: '待补充' },
-  { name: '多方联合确认会议纪要', owner: '项目法人', status: '待签章' },
+  { name: '项目开工申请', owner: '监理工程师批复', status: '待批复' },
+  { name: '隐蔽工程验收', owner: '设计单位、监理单位、项目法人共同验收', status: '待验收' },
+  { name: '隐蔽工程验收备案', owner: '上一级质量监督单位', status: '待备案' },
+  { name: '项目地块空间矢量坐标与高程', owner: '测绘单位', status: '待补充' },
+  { name: '多方联合确认会议纪要', owner: '监理单位责任人', status: '待签认' },
 ];
 
 export const mapStoragePlan = {
   phase: '字段与资料准备',
   interfaceIntegration: false,
-  fields: ['项目立项信息', '实施过程信息', '验收信息', '地块矢量坐标', '工程点位坐标', '管护责任主体'],
+  fields: ['项目开工申请', '隐蔽工程验收', '隐蔽工程验收备案', '项目地块空间矢量坐标与高程', '多方联合确认会议纪要'],
 };
 
 export const mockDatabaseConnections = [

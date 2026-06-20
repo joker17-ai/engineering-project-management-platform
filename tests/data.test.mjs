@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   projectTree,
+  archiveChecklist,
   qualityScopes,
   progressItems,
   mapStoragePlan,
@@ -46,6 +47,17 @@ test('investment total is calculated from completed quantity and tender unit pri
 test('map storage is field-and-document preparation only in first version', () => {
   assert.equal(mapStoragePlan.phase, '字段与资料准备');
   assert.equal(mapStoragePlan.interfaceIntegration, false);
+  assert.deepEqual(mapStoragePlan.fields, archiveChecklist.map((item) => item.name));
+  assert.ok(mapStoragePlan.fields.includes('项目地块空间矢量坐标与高程'));
+});
+
+test('archive checklist follows unit-work process document scope', () => {
+  assert.deepEqual(
+    archiveChecklist.map((item) => item.name),
+    ['项目开工申请', '隐蔽工程验收', '隐蔽工程验收备案', '项目地块空间矢量坐标与高程', '多方联合确认会议纪要'],
+  );
+  assert.equal(archiveChecklist[0].owner, '监理工程师批复');
+  assert.equal(archiveChecklist[1].owner, '设计单位、监理单位、项目法人共同验收');
 });
 
 test('mock database connections reserve manual upload sources before real permissions exist', () => {

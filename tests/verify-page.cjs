@@ -29,12 +29,9 @@ const { chromium } = require('playwright');
   const currentUnitWork = await page.locator('#currentUnitWork').textContent();
   const currentDivisionWork = await page.locator('#currentDivisionWork').textContent();
   const treeHiddenByDefault = await page.locator('.tree-panel').evaluate((node) => getComputedStyle(node).display === 'none');
-  const projectCards = await page.locator('.project-card').count();
   const projectSwitchOptions = await page.locator('#projectSwitch option').count();
-
-  await page.locator('#projectNameInput').fill('内蒙古测试高标准农田项目管理');
-  await page.getByRole('button', { name: '创建项目', exact: true }).click();
-  const createdProjectVisible = await page.getByRole('button', { name: /内蒙古测试高标准农田项目管理/ }).count();
+  const unitOverviewRows = await page.locator('.unit-overview-table tbody tr').count();
+  const unitOverviewStatuses = await page.locator('.unit-overview-table .status').allTextContents();
 
   await page.getByRole('button', { name: '时标网络图', exact: true }).click();
   const moduleSubitems = await page.locator('.module-subnav .tree-node').count();
@@ -50,15 +47,17 @@ const { chromium } = require('playwright');
   await page.getByRole('button', { name: '质量控制', exact: true }).click();
   const qualityCards = await page.locator('.content-view .card').count();
 
-  await page.getByRole('button', { name: '进度投资', exact: true }).click();
+  await page.getByRole('button', { name: '进度控制', exact: true }).click();
   const totalText = await page.locator('.investment-total').textContent();
   const progressHeaders = await page.locator('.content-view thead th').allTextContents();
 
   await page.getByRole('button', { name: '档案资料', exact: true }).click();
   const archiveRows = await page.locator('.content-view tbody tr').count();
+  const archiveNames = await page.locator('.content-view tbody td:first-child').allTextContents();
 
   await page.getByRole('button', { name: '上图入库', exact: true }).click();
   const mapCards = await page.locator('.prep-card').count();
+  const mapFields = await page.locator('.content-view .card li').allTextContents();
 
   await page.getByRole('button', { name: '接口资料库', exact: true }).click();
   const interfaceCards = await page.locator('.interface-card').count();
@@ -108,9 +107,9 @@ const { chromium } = require('playwright');
         currentDivisionWork,
         treeHiddenByDefault,
         treeVisibleAfterClick,
-        projectCards,
         projectSwitchOptions,
-        createdProjectVisible,
+        unitOverviewRows,
+        unitOverviewStatuses,
         moduleSubitems,
         focusedSubitem,
         focusedSubitemAfterClick,
@@ -120,7 +119,9 @@ const { chromium } = require('playwright');
         totalText,
         progressHeaders,
         archiveRows,
+        archiveNames,
         mapCards,
+        mapFields,
         interfaceCards,
         uploadButtons,
         uploadedFiles,
