@@ -4,62 +4,46 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>蓝箭项目管理平台</title>
+    <link rel="icon" href="data:," />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <main class="platform-shell">
-      <aside class="rail">
+    <main class="admin-shell">
+      <aside class="module-rail">
         <div class="brand">
-          <div class="brand-mark">LA</div>
+          <img src="./assets/blue-arrow-logo.jpg" alt="蓝箭项目标识" />
           <div>
             <strong>蓝箭项目管理平台</strong>
-            <span>公众工程项目协同台</span>
+            <small>工程线位点二</small>
           </div>
         </div>
-        <nav id="moduleNav" class="module-nav" aria-label="平台模块"></nav>
-        <section class="github-box">
-          <span>GitHub 数据仓库</span>
-          <strong>engineering-project-management-platform</strong>
-          <a href="https://github.com/joker17-ai/engineering-project-management-platform" target="_blank" rel="noreferrer">打开仓库</a>
-        </section>
+        <nav id="moduleNav" class="module-nav" aria-label="一级目录"></nav>
+        <a class="github-link" href="https://github.com/joker17-ai/engineering-project-management-platform" target="_blank" rel="noreferrer">
+          GitHub 数据仓库
+        </a>
       </aside>
 
-      <section class="project-panel">
-        <div class="panel-title">
-          <span>工程线位点二</span>
-          <strong id="activeProjectName"></strong>
-        </div>
-        <div class="project-selectors">
+      <aside class="secondary-panel">
+        <section class="project-controls">
           <label>
-            <span>项目</span>
-            <select id="projectSelect"></select>
+            <span>当前项目切换</span>
+            <select id="projectSwitch"></select>
           </label>
           <label>
-            <span>标段</span>
-            <select id="sectionSelect"></select>
+            <span>当前标段</span>
+            <select id="sectionSwitch"></select>
           </label>
-        </div>
-        <div id="projectTree" class="project-tree"></div>
-      </section>
+        </section>
+        <section class="secondary-heading">
+          <span>二级目录</span>
+          <strong id="secondaryCount"></strong>
+        </section>
+        <nav id="secondaryNav" class="secondary-nav" aria-label="二级目录"></nav>
+      </aside>
 
       <section class="workspace">
-        <header class="topbar">
-          <div>
-            <span class="eyebrow">Blue Arrow Public Project Console</span>
-            <h1>蓝箭项目管理平台</h1>
-            <p>以 GitHub 仓库为数据底座，围绕工程线位点二建立项目结构、资料归集、进度质量、风险闭环和公众公开看板。</p>
-          </div>
-          <div class="sync-card">
-            <span>数据状态</span>
-            <strong id="syncState">GitHub 已关联</strong>
-            <small>本地演示数据会保存在浏览器，正式数据建议提交到仓库目录。</small>
-          </div>
-        </header>
-
         <section id="statsGrid" class="stats-grid" aria-label="项目指标"></section>
-
-        <div class="tab-strip" id="tabStrip"></div>
-
+        <div id="tabStrip" class="tab-strip"></div>
         <section id="contentView" class="content-view"></section>
       </section>
     </main>

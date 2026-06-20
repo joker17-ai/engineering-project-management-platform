@@ -23,13 +23,14 @@ function get(pathname) {
     homeStatus: home.statusCode,
     databaseStatus: database.statusCode,
     hasBlueArrow: home.body.includes('蓝箭项目管理平台'),
+    hasLogo: home.body.includes('./assets/blue-arrow-logo.jpg'),
     hasAppScript: home.body.includes('./src/app.mjs'),
     hasDatabaseScript: database.body.includes('./src/database.mjs'),
   };
 
   console.log(JSON.stringify(result, null, 2));
 
-  if (home.statusCode !== 200 || database.statusCode !== 200 || !result.hasBlueArrow || !result.hasAppScript || !result.hasDatabaseScript) {
+  if (Object.values(result).some((value) => value === false) || home.statusCode !== 200 || database.statusCode !== 200) {
     process.exit(1);
   }
 })().catch((error) => {

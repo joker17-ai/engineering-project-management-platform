@@ -2,9 +2,8 @@
   "platform": "蓝箭项目管理平台",
   "projectId": "line-site-2",
   "projectName": "工程线位点二综合治理项目",
-  "publicName": "蓝箭公众项目样板工程",
   "region": "工程线位点二",
-  "stage": "资料建库与公开协同",
+  "stage": "资料建库与后台管理",
   "manager": "蓝箭项目办公室",
   "repository": "https://github.com/joker17-ai/engineering-project-management-platform",
   "dataFolders": [

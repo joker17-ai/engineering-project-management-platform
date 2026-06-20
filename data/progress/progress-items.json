@@ -1,38 +1,29 @@
 [
   {
-    "id": "P-001",
-    "task": "控制点复测与坐标成果入库",
-    "owner": "测绘单位",
-    "planned": 100,
-    "done": 72,
-    "amount": 128000,
-    "status": "关注"
-  },
-  {
-    "id": "P-002",
-    "task": "基础处理施工准备",
+    "id": "DY-001",
+    "task": "开挖、衬砌、消能防护",
     "owner": "施工单位",
     "planned": 100,
-    "done": 38,
+    "done": 0,
     "amount": 236000,
-    "status": "风险"
+    "status": "未开工"
   },
   {
-    "id": "P-003",
-    "task": "临时通行便道与围挡",
-    "owner": "总承包单位",
+    "id": "DY-002",
+    "task": "控制柜、照明及接地检测",
+    "owner": "电气施工单位",
     "planned": 100,
-    "done": 61,
-    "amount": 184000,
-    "status": "关注"
+    "done": 0,
+    "amount": 128000,
+    "status": "未开工"
   },
   {
-    "id": "P-004",
-    "task": "GitHub 数据目录初始化",
-    "owner": "蓝箭数据中心",
+    "id": "DY-003",
+    "task": "地块矢量坐标与工程点位",
+    "owner": "测绘单位",
     "planned": 100,
-    "done": 100,
-    "amount": 0,
-    "status": "正常"
+    "done": 0,
+    "amount": 86000,
+    "status": "未开工"
   }
 ]
