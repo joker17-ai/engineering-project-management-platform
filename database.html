@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>蓝箭数据中心</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="database-shell">
+      <header class="database-header">
+        <div>
+          <p class="eyebrow">Blue Arrow Data Center</p>
+          <h1>蓝箭 GitHub 数据中心</h1>
+          <p>集中查看工程线位点二的数据目录、项目记录、进度台账、资料索引和公众公告。</p>
+        </div>
+        <a class="open-db-link" href="./index.html">返回平台工作台</a>
+      </header>
+
+      <section class="database-layout">
+        <aside class="database-list" id="databaseList"></aside>
+        <section class="database-workspace">
+          <div id="databaseSummary" class="database-summary"></div>
+          <div id="databaseTableHost" class="database-table-host"></div>
+        </section>
+      </section>
+    </main>
+
+    <script type="module" src="./src/database.mjs"></script>
+  </body>
+</html>

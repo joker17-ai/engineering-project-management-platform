@@ -1,0 +1,7 @@
+backups/
+dist/
+preview.png
+preview-current.png
+tmp/
+.agents/
+.codex/
