@@ -19,10 +19,16 @@ const { chromium } = require('playwright');
     localStorage.removeItem('engineering_project_portfolio_v1');
     localStorage.removeItem('engineering_project_portfolio_v2');
     localStorage.removeItem('engineering_project_import_analysis_v1');
+    localStorage.removeItem('engineering_project_access_profile_v1');
   });
   await page.reload({ waitUntil: 'networkidle' });
+  await page.locator('#accessProjectName').fill('自动测试项目');
+  await page.locator('#accessCreateForm button[type="submit"]').click();
+  await page.waitForSelector('.admin-shell:not([hidden])');
 
   const title = await page.locator('h1').textContent();
+  const credentialRows = await page.locator('.credential-table tbody tr').count();
+  const managerCodeText = await page.locator('.manager-code-card strong').textContent();
   const brandTitle = await page.locator('.brand strong').textContent();
   const brandText = await page.locator('.brand').textContent();
   const brandSubtitleCount = await page.locator('.brand small').count();
@@ -106,6 +112,8 @@ const { chromium } = require('playwright');
     JSON.stringify(
       {
         title,
+        credentialRows,
+        managerCodeText,
         brandTitle,
         brandText,
         brandSubtitleCount,

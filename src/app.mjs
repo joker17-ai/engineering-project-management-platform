@@ -12,7 +12,7 @@ import {
   scheduleItems,
   hiddenAcceptanceItems,
   sourceDocuments,
-  createProjectTree,
+  createBlankProjectTree,
 } from './data.mjs';
 
 const tabs = [
@@ -28,6 +28,7 @@ const UPLOAD_DB_NAME = 'engineering_project_uploads_v1';
 const UPLOAD_STORE = 'files';
 const PROJECTS_STORAGE_KEY = 'engineering_project_portfolio_v2';
 const IMPORT_ANALYSIS_STORAGE_KEY = 'engineering_project_import_analysis_v1';
+const ACCESS_PROFILE_STORAGE_KEY = 'engineering_project_access_profile_v1';
 const SUPPORTED_IMPORT_ACCEPT = [
   '.png',
   '.jpg',
@@ -57,6 +58,7 @@ const state = {
   activeSubitemIndex: 0,
   activePermissionActor: '项目法人',
   importAnalyses: loadImportAnalyses(),
+  accessProfile: loadAccessProfile(),
 };
 
 state.activeProjectId = state.projects[0].id;
@@ -127,6 +129,21 @@ function saveImportAnalyses() {
   localStorage.setItem(IMPORT_ANALYSIS_STORAGE_KEY, JSON.stringify(state.importAnalyses));
 }
 
+function loadAccessProfile() {
+  const stored = localStorage.getItem(ACCESS_PROFILE_STORAGE_KEY);
+  if (!stored) return null;
+
+  try {
+    return JSON.parse(stored);
+  } catch {
+    return null;
+  }
+}
+
+function saveAccessProfile() {
+  localStorage.setItem(ACCESS_PROFILE_STORAGE_KEY, JSON.stringify(state.accessProfile));
+}
+
 function currentProject() {
   return state.projects.find((project) => project.id === state.activeProjectId) ?? state.projects[0];
 }
@@ -135,6 +152,27 @@ function switchProject(projectId) {
   state.activeProjectId = projectId;
   state.selectedNode = flattenProjectTree(currentProject().tree)[0];
   renderAll();
+}
+
+function createOrSwitchProjectByName(name) {
+  const existing = state.projects.find((project) => project.name === name);
+  if (existing) {
+    state.activeProjectId = existing.id;
+    state.selectedNode = flattenProjectTree(existing.tree)[0];
+    return existing;
+  }
+
+  const project = {
+    id: `project-${Date.now()}`,
+    name,
+    region: '手动创建项目',
+    stage: '待导入图纸资料',
+    tree: createBlankProjectTree(name),
+  };
+  state.projects.push(project);
+  state.activeProjectId = project.id;
+  state.selectedNode = flattenProjectTree(project.tree)[0];
+  return project;
 }
 
 function getProjectScopedId(connectionId) {
@@ -171,9 +209,7 @@ function countNodesByType(nodes, type) {
 }
 
 function calculateUnitWorkCompletion() {
-  const planned = progressItems.reduce((total, item) => total + item.plannedQuantity, 0);
-  const completed = progressItems.reduce((total, item) => total + item.completedQuantity, 0);
-  return planned === 0 ? 0 : Math.round((completed / planned) * 100);
+  return calculateNodeCompletion(flattenProjectTree(currentProject().tree), '单位工程');
 }
 
 function calculateNodeCompletion(nodes, type) {
@@ -209,6 +245,322 @@ function getBidSections() {
 
 function getProjectAnalyses() {
   return state.importAnalyses.filter((item) => item.projectId === state.activeProjectId);
+}
+
+function getImportedSuggestions() {
+  const analyses = getProjectAnalyses();
+  return {
+    analyses,
+    unitWorks: [...new Set(analyses.flatMap((item) => item.suggestions.unitWorks))],
+    divisionWorks: [...new Set(analyses.flatMap((item) => item.suggestions.divisionWorks))],
+    cellWorks: [...new Set(analyses.flatMap((item) => item.suggestions.cellWorks))],
+    controls: [...new Set(analyses.flatMap((item) => item.suggestions.controls))],
+  };
+}
+
+function hasProjectGeneratedData() {
+  return getProjectAnalyses().length > 0;
+}
+
+function getDynamicScheduleItems() {
+  const imported = getImportedSuggestions();
+  if (imported.cellWorks.length > 0) {
+    return imported.cellWorks.map((cell, index) => ({
+      code: `JH-${String(index + 1).padStart(3, '0')}`,
+      task: cell,
+      start: '待编制',
+      end: '待编制',
+      predecessor: index === 0 ? '资料导入与项目划分确认' : imported.cellWorks[index - 1],
+      floatDays: '待计算',
+      critical: imported.controls.some((control) => ['隐蔽', '验收', '基础', '边坡', '灌浆', '接地'].some((key) => control.includes(key))),
+    }));
+  }
+
+  if (flattenProjectTree(currentProject().tree).some((node) => node.type === '单元工程')) {
+    return scheduleItems;
+  }
+
+  return [
+    {
+      code: 'JH-001',
+      task: '导入设计图纸、批复、清单和施工组织资料后自动生成',
+      start: '待导入',
+      end: '待导入',
+      predecessor: '新建项目',
+      floatDays: '待计算',
+      critical: true,
+    },
+  ];
+}
+
+function getDynamicProgressItems() {
+  const imported = getImportedSuggestions();
+  if (imported.cellWorks.length > 0) {
+    return imported.cellWorks.map((cell, index) => ({
+      id: `p${index + 1}`,
+      item: cell,
+      plannedQuantity: 1,
+      completedQuantity: 0,
+      unit: '项',
+      tenderUnitPrice: 0,
+      status: 'warning',
+    }));
+  }
+
+  if (flattenProjectTree(currentProject().tree).some((node) => node.type === '单元工程')) {
+    return progressItems;
+  }
+
+  return [
+    {
+      id: 'p1',
+      item: '导入投标清单和完成工程量后自动计算',
+      plannedQuantity: 1,
+      completedQuantity: 0,
+      unit: '项',
+      tenderUnitPrice: 0,
+      status: 'warning',
+    },
+  ];
+}
+
+function getDynamicQualityScopes() {
+  const imported = getImportedSuggestions();
+  if (imported.unitWorks.length > 0 || imported.controls.length > 0) {
+    const units = imported.unitWorks.length > 0 ? imported.unitWorks : ['导入资料识别质量控制范围'];
+    const controls =
+      imported.controls.length > 0
+        ? imported.controls
+        : ['待从设计图纸、施工规范、隐蔽验收资料中提取控制指标'];
+    return Object.fromEntries(
+      units.map((unit) => [
+        unit,
+        {
+          rawMaterials: ['待从材料表、检测报告、施工规范中提取'],
+          processControls: controls,
+        },
+      ]),
+    );
+  }
+
+  if (flattenProjectTree(currentProject().tree).some((node) => node.type === '单元工程')) {
+    return qualityScopes;
+  }
+
+  return {
+    待导入资料: {
+      rawMaterials: ['导入设计图纸、规范、材料清单后生成'],
+      processControls: ['导入资料后自动生成质量控制图和班组执行表'],
+    },
+  };
+}
+
+function getDynamicHiddenAcceptanceItems() {
+  const imported = getImportedSuggestions();
+  const controls = imported.controls.filter((item) => ['隐蔽', '验收', '备案', '基础', '灌浆', '接地'].some((key) => item.includes(key)));
+  if (controls.length > 0) {
+    return controls.map((control, index) => ({
+      part: imported.cellWorks[index] ?? control,
+      trigger: '进入下一道工序前',
+      check: control,
+      witnesses: '设计单位、监理单位、项目法人、上一级质量监督单位按需见证',
+      status: '待验收',
+    }));
+  }
+
+  if (flattenProjectTree(currentProject().tree).some((node) => node.type === '单元工程')) {
+    return hiddenAcceptanceItems;
+  }
+
+  return [
+    {
+      part: '待导入隐蔽工程资料',
+      trigger: '资料导入后生成',
+      check: '基础面、结构尺寸、材料检测和工序交接资料',
+      witnesses: '设计单位、监理单位、项目法人',
+      status: '待补充',
+    },
+  ];
+}
+
+function getDynamicArchiveChecklist() {
+  const imported = getImportedSuggestions();
+  if (hasProjectGeneratedData()) {
+    const baseItems = [
+      ['项目开工申请', '监理工程师', '待审批'],
+      ['隐蔽工程验收', '设计单位、监理单位、项目法人', '待验收'],
+      ['隐蔽工程验收备案', '上一级质量监督单位', '待备案'],
+      ['项目地块空间矢量坐标与高程', '测绘单位', '待补充'],
+      ['多方联合确认会议纪要', '监理单位责任人', '待归档'],
+    ];
+    return [
+      ...baseItems.map(([name, owner, status]) => ({ name, owner, status })),
+      ...imported.analyses.slice(0, 6).map((analysis) => ({
+        name: analysis.name,
+        owner: '数据智能中心',
+        status: analysis.status,
+      })),
+    ];
+  }
+
+  if (flattenProjectTree(currentProject().tree).some((node) => node.type === '单元工程')) {
+    return archiveChecklist;
+  }
+
+  return [
+    { name: '项目开工申请', owner: '监理工程师', status: '待审批' },
+    { name: '隐蔽工程验收', owner: '设计单位、监理单位、项目法人', status: '待验收' },
+    { name: '隐蔽工程验收备案', owner: '上一级质量监督单位', status: '待备案' },
+    { name: '项目地块空间矢量坐标与高程', owner: '测绘单位', status: '待补充' },
+    { name: '多方联合确认会议纪要', owner: '监理单位责任人', status: '待归档' },
+  ];
+}
+
+function getDynamicSourceDocuments() {
+  const imported = getImportedSuggestions();
+  if (imported.analyses.length > 0) {
+    return imported.analyses.map((analysis) => ({
+      name: analysis.name,
+      type: analysis.type,
+      source: '本地导入',
+      status: analysis.status,
+      evidence: analysis.summary,
+    }));
+  }
+
+  if (flattenProjectTree(currentProject().tree).some((node) => node.type === '单元工程')) {
+    return sourceDocuments;
+  }
+
+  return [
+    {
+      name: '待导入设计图纸、批复、清单、坐标和验收资料',
+      type: '本地文件',
+      source: '新建项目',
+      status: '待补充',
+      evidence: '导入后自动补充项目划分、控制图表、档案资料和数据中心记录',
+    },
+  ];
+}
+
+function getModuleGenerationCards() {
+  const imported = getImportedSuggestions();
+  const generatedCount = imported.unitWorks.length + imported.divisionWorks.length + imported.cellWorks.length + imported.controls.length;
+  const status = generatedCount > 0 ? '已生成' : '待资料导入';
+  return [
+    ['项目结构树', imported.cellWorks.length, status],
+    ['时标网络图', getDynamicScheduleItems().length, status],
+    ['工程量进度控制图', getDynamicProgressItems().length, status],
+    ['质量控制图', Object.keys(getDynamicQualityScopes()).length, status],
+    ['安全隐患树状图', imported.controls.filter((item) => ['安全', '边坡', '基坑', '用电'].some((key) => item.includes(key))).length, status],
+    ['隐蔽工程与验收管理', getDynamicHiddenAcceptanceItems().length, status],
+    ['进度与投资报表', getDynamicProgressItems().length, status],
+    ['档案资料管理', getDynamicArchiveChecklist().length, status],
+    ['数据智能中心', imported.analyses.length, imported.analyses.length > 0 ? '已入库' : '待导入'],
+  ];
+}
+
+function getParticipantActors() {
+  return moduleCatalog.find((item) => item.id === 'participants')?.subitems ?? [];
+}
+
+function createAccessProfile(projectName, managerCode = generateManagerCode(), managerPassword = generateMixedCode(6)) {
+  const normalizedManagerCode = managerCode.trim();
+  return {
+    projectName,
+    managerCode: normalizedManagerCode,
+    managerPassword,
+    createdAt: new Date().toLocaleString('zh-CN'),
+    participants: getParticipantActors().map((actor, index) => ({
+      actor,
+      projectCode: `${normalizedManagerCode}-${String(index + 1).padStart(2, '0')}`,
+      password: generateMixedCode(6),
+      status: '待分发',
+    })),
+  };
+}
+
+function generateManagerCode() {
+  return shuffleString(`${pickRandom('ABCDEFGHIJKLMNOPQRSTUVWXYZ')}${pickRandom('abcdefghijklmnopqrstuvwxyz')}${pickRandom('0123456789')}${generateMixedCode(5)}`);
+}
+
+function generateMixedCode(length) {
+  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+  const digits = '0123456789';
+  const chars = `${letters}${digits}`;
+  if (length < 2) return Array.from({ length }, () => pickRandom(chars)).join('');
+  return shuffleString(`${pickRandom(letters)}${pickRandom(digits)}${Array.from({ length: length - 2 }, () => pickRandom(chars)).join('')}`);
+}
+
+function pickRandom(chars) {
+  return chars[Math.floor(Math.random() * chars.length)];
+}
+
+function shuffleString(value) {
+  return value
+    .split('')
+    .sort(() => Math.random() - 0.5)
+    .join('');
+}
+
+function validateManagerCode(value) {
+  return value.length >= 8 && /[A-Z]/.test(value) && /[a-z]/.test(value) && /\d/.test(value);
+}
+
+function validatePassword(value) {
+  return value.length === 6 && /[A-Za-z]/.test(value) && /\d/.test(value);
+}
+
+function renderAccessCredentialPanel() {
+  if (!state.accessProfile) {
+    return `
+      <div class="import-empty">
+        <strong>尚未建立项目身份体系</strong>
+        <span>从进入页创建项目后，会自动生成项目管理者和10类参建单位的项目代码、密码。</span>
+      </div>
+    `;
+  }
+
+  return `
+    <section class="credential-panel">
+      <div class="credential-head">
+        <div>
+          <span class="eyebrow">项目协同身份</span>
+          <h3>${state.accessProfile.projectName}</h3>
+          <p>同一个项目只生成一套项目代码体系。后台按项目名称和管理者代码隔离不同项目内容。</p>
+        </div>
+        <div class="manager-code-card">
+          <span>项目管理者代码</span>
+          <strong>${state.accessProfile.managerCode}</strong>
+          <small>管理者密码：${state.accessProfile.managerPassword}</small>
+        </div>
+      </div>
+      <table class="table credential-table">
+        <thead>
+          <tr>
+            <th>参建单位</th>
+            <th>项目代码</th>
+            <th>初始密码</th>
+            <th>状态</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${state.accessProfile.participants
+            .map(
+              (item) => `
+                <tr>
+                  <td>${item.actor}</td>
+                  <td>${item.projectCode}</td>
+                  <td>${item.password}</td>
+                  <td><span class="status warning">${item.status}</span></td>
+                </tr>
+              `,
+            )
+            .join('')}
+        </tbody>
+      </table>
+    </section>
+  `;
 }
 
 function getDynamicSubitems(module) {
@@ -298,8 +650,95 @@ function renderTabs() {
   });
 }
 
+function renderProjectDashboard() {
+  const project = currentProject();
+  const nodes = flattenProjectTree(project.tree);
+  const analyses = getProjectAnalyses();
+  const counts = [
+    ['单位工程', countNodesByType(nodes, '单位工程')],
+    ['分部工程', countNodesByType(nodes, '分部工程')],
+    ['单元工程', countNodesByType(nodes, '单元工程')],
+    ['已导入资料', analyses.length],
+  ];
+
+  return `
+    <section class="module-detail-view">
+      <div class="project-command">
+        <div>
+          <span class="eyebrow">多项目统一管理入口</span>
+          <h2>新建项目</h2>
+          <p>输入新的项目名称后，平台会切换到独立的新项目状态。随后导入该项目的设计图纸、批复、投标清单、坐标和验收资料，各功能模块会按当前项目自动生成项目结构树、时标网络图、进度图、质量控制图、安全隐患树、投资报表和档案资料。</p>
+        </div>
+        <form id="projectCreateForm" class="project-create-form">
+          <label>
+            <span>新项目名称</span>
+            <input id="projectNameInput" type="text" placeholder="例如：某某水库除险加固工程" />
+          </label>
+          <button class="upload-button" type="submit">新建项目并进入资料导入</button>
+        </form>
+      </div>
+
+      <div class="project-card-grid">
+        ${state.projects
+          .map(
+            (item) => `
+              <button class="project-card ${item.id === state.activeProjectId ? 'active' : ''}" data-project-id="${item.id}" type="button">
+                <strong>${item.name}</strong>
+                <span>${item.region}</span>
+                <small>${item.stage}</small>
+              </button>
+            `,
+          )
+          .join('')}
+      </div>
+
+      <div class="dashboard-status-grid">
+        ${counts
+          .map(
+            ([label, value]) => `
+              <article class="metric">
+                <span>${label}</span>
+                <strong>${value}</strong>
+                <span>${label === '已导入资料' ? '份资料' : '个节点'}</span>
+              </article>
+            `,
+          )
+          .join('')}
+      </div>
+
+      ${renderAccessCredentialPanel()}
+
+      ${renderProjectImportPanel()}
+
+      <div class="view-grid module-generation-grid">
+        ${getModuleGenerationCards()
+          .map(
+            ([name, count, status]) => `
+              <article class="card">
+                <h3>${name}</h3>
+                <div class="detail-kv"><span>生成数量</span><strong>${count}</strong></div>
+                <div class="detail-kv"><span>当前状态</span><strong>${status}</strong></div>
+                <p class="node-meta">该模块内容跟随“${project.name}”的导入资料动态更新。</p>
+              </article>
+            `,
+          )
+          .join('')}
+      </div>
+    </section>
+  `;
+}
+
 function renderOverview() {
   const rows = getCellWorkRows();
+  if (rows.length === 0) {
+    return `
+      <div class="import-empty">
+        <strong>当前项目还没有单元工程</strong>
+        <span>请先在“项目总览舱”点击新建项目并导入图纸、批复、清单、坐标或施工资料，系统会自动生成单位工程、分部工程和单元工程。</span>
+      </div>
+    `;
+  }
+
   return `
     <table class="table unit-overview-table">
       <thead>
@@ -327,9 +766,10 @@ function renderOverview() {
 }
 
 function renderQuality() {
+  const scopes = getDynamicQualityScopes();
   return `
     <div class="view-grid">
-      ${Object.entries(qualityScopes)
+      ${Object.entries(scopes)
         .map(
           ([scope, controls]) => `
             <article class="card">
@@ -347,6 +787,7 @@ function renderQuality() {
 }
 
 function renderScheduleNetwork() {
+  const items = getDynamicScheduleItems();
   return `
     <table class="table">
       <thead>
@@ -360,7 +801,7 @@ function renderScheduleNetwork() {
         </tr>
       </thead>
       <tbody>
-        ${scheduleItems
+        ${items
           .map(
             (item) => `
               <tr>
@@ -368,7 +809,7 @@ function renderScheduleNetwork() {
                 <td>${item.task}</td>
                 <td>${item.start} 至 ${item.end}</td>
                 <td>${item.predecessor}</td>
-                <td>${item.floatDays} 天</td>
+                <td>${item.floatDays}${Number.isFinite(item.floatDays) ? ' 天' : ''}</td>
                 <td><span class="status ${item.critical ? 'danger' : 'ok'}">${item.critical ? '关键' : '可调整'}</span></td>
               </tr>
             `,
@@ -380,6 +821,7 @@ function renderScheduleNetwork() {
 }
 
 function renderHiddenAcceptance() {
+  const items = getDynamicHiddenAcceptanceItems();
   return `
     <table class="table">
       <thead>
@@ -392,7 +834,7 @@ function renderHiddenAcceptance() {
         </tr>
       </thead>
       <tbody>
-        ${hiddenAcceptanceItems
+        ${items
           .map(
             (item) => `
               <tr>
@@ -411,6 +853,7 @@ function renderHiddenAcceptance() {
 }
 
 function renderSourceDocuments() {
+  const documents = getDynamicSourceDocuments();
   return `
     <table class="table">
       <thead>
@@ -423,7 +866,7 @@ function renderSourceDocuments() {
         </tr>
       </thead>
       <tbody>
-        ${sourceDocuments
+        ${documents
           .map(
             (item) => `
               <tr>
@@ -507,7 +950,8 @@ function renderSuggestionBlock(title, items) {
 }
 
 function renderProgress() {
-  const total = calculateInvestmentTotal(progressItems);
+  const items = getDynamicProgressItems();
+  const total = calculateInvestmentTotal(items);
   return `
     <table class="table">
       <thead>
@@ -521,7 +965,7 @@ function renderProgress() {
         </tr>
       </thead>
       <tbody>
-        ${progressItems
+        ${items
           .map((item) => {
             const percent = calculateProgressPercent(item);
             const output = item.completedQuantity * item.tenderUnitPrice;
@@ -547,6 +991,7 @@ function renderProgress() {
 }
 
 function renderArchive() {
+  const items = getDynamicArchiveChecklist();
   return `
     <table class="table">
       <thead>
@@ -557,7 +1002,7 @@ function renderArchive() {
         </tr>
       </thead>
       <tbody>
-        ${archiveChecklist
+        ${items
           .map(
             (item) => `
               <tr>
@@ -635,6 +1080,10 @@ function renderInterfaces() {
 function renderModuleDetailView() {
   const module = moduleCatalog.find((item) => item.id === state.activeModuleId) ?? moduleCatalog[0];
   const subitem = getActiveSubitem();
+  if (module.id === 'dashboard') {
+    return renderProjectDashboard();
+  }
+
   if (module.id === 'participants') {
     return renderPermissionManager(module);
   }
@@ -797,6 +1246,7 @@ function renderPermissionManager(module) {
             .join('')}
         </div>
       </div>
+      ${renderAccessCredentialPanel()}
     </section>
   `;
 }
@@ -848,16 +1298,12 @@ function bindProjectDashboard() {
     const name = input.value.trim();
     if (!name) return;
 
-      const project = {
-        id: `project-${Date.now()}`,
-        name,
-        region: '手动创建',
-        stage: '新建项目',
-      tree: createProjectTree(name),
-    };
-    state.projects.push(project);
-    state.activeProjectId = project.id;
-    state.selectedNode = flattenProjectTree(project.tree)[0];
+    createOrSwitchProjectByName(name);
+    state.accessProfile = createAccessProfile(name);
+    state.activeModuleId = 'dashboard';
+    state.activeTab = 'module';
+    state.activeSubitemIndex = 0;
+    saveAccessProfile();
     saveProjects();
     renderAll();
   });
@@ -890,10 +1336,90 @@ function bindProjectImportControls() {
 }
 
 function boot() {
+  if (!state.accessProfile) {
+    renderAccessGate();
+    return;
+  }
+  syncProjectFromAccessProfile();
   renderAll();
 }
 
+function syncProjectFromAccessProfile() {
+  if (!state.accessProfile?.projectName) return;
+  createOrSwitchProjectByName(state.accessProfile.projectName);
+  saveProjects();
+}
+
+function renderAccessGate(errorMessage = '') {
+  const accessGate = document.querySelector('#accessGate');
+  document.querySelector('.admin-shell').hidden = true;
+  document.body.classList.add('access-mode');
+  const managerCode = generateManagerCode();
+  const managerPassword = generateMixedCode(6);
+  accessGate.innerHTML = `
+    <div class="access-card">
+      <div class="access-intro">
+        <span class="eyebrow">工程项目管理平台</span>
+        <h1>新建项目管理者入口</h1>
+        <p>先建立项目名称、管理者代码和管理者密码。进入平台后，系统会按同一项目代码自动生成10类参建单位的项目代码和初始密码。</p>
+      </div>
+      <form id="accessCreateForm" class="access-form">
+        <label>
+          <span>项目名称</span>
+          <input id="accessProjectName" type="text" placeholder="请输入项目名称" required />
+        </label>
+        <label>
+          <span>项目管理者代码</span>
+          <input id="accessManagerCode" type="text" value="${managerCode}" minlength="8" required />
+          <small>至少8位，必须包含大写字母、小写字母和数字。</small>
+        </label>
+        <label>
+          <span>管理者密码</span>
+          <input id="accessManagerPassword" type="text" value="${managerPassword}" minlength="6" maxlength="6" required />
+          <small>6位，必须由字母和数字混合组成。</small>
+        </label>
+        ${errorMessage ? `<strong class="access-error">${errorMessage}</strong>` : ''}
+        <button class="upload-button" type="submit">新建项目并生成参建单位账号</button>
+      </form>
+    </div>
+  `;
+  bindAccessGate();
+}
+
+function bindAccessGate() {
+  document.querySelector('#accessCreateForm')?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const projectName = document.querySelector('#accessProjectName').value.trim();
+    const managerCode = document.querySelector('#accessManagerCode').value.trim();
+    const managerPassword = document.querySelector('#accessManagerPassword').value.trim();
+    if (!projectName) {
+      renderAccessGate('请先输入项目名称。');
+      return;
+    }
+    if (!validateManagerCode(managerCode)) {
+      renderAccessGate('项目管理者代码至少8位，并且必须包含大写字母、小写字母和数字。');
+      return;
+    }
+    if (!validatePassword(managerPassword)) {
+      renderAccessGate('管理者密码必须为6位，并且由字母和数字混合组成。');
+      return;
+    }
+
+    createOrSwitchProjectByName(projectName);
+    state.accessProfile = createAccessProfile(projectName, managerCode, managerPassword);
+    state.activeModuleId = 'dashboard';
+    state.activeTab = 'module';
+    state.activeSubitemIndex = 0;
+    saveAccessProfile();
+    saveProjects();
+    renderAll();
+  });
+}
+
 function renderAll() {
+  document.querySelector('#accessGate').innerHTML = '';
+  document.querySelector('.admin-shell').hidden = false;
+  document.body.classList.remove('access-mode');
   renderHeader();
   renderModules();
   renderStats();
@@ -1171,18 +1697,14 @@ function applyAnalysisToCurrentProject(analysis) {
   const bid = root.children?.find((node) => node.type === '标段') ?? root.children?.[0];
   if (!bid) return;
 
-  for (const unitName of analysis.suggestions.unitWorks) {
-    if (['档案资料管理', '进度与投资报表', '图纸与现场取证'].includes(unitName)) continue;
+  analysis.suggestions.unitWorks.forEach((unitName, unitIndex) => {
+    if (['档案资料管理', '进度与投资报表', '图纸与现场取证'].includes(unitName)) return;
     const unit = ensureChildNode(bid, unitName, '单位工程');
-    const divisions = analysis.suggestions.divisionWorks.length > 0 ? analysis.suggestions.divisionWorks : ['待确认分部工程'];
-    const cells = analysis.suggestions.cellWorks.length > 0 ? analysis.suggestions.cellWorks : ['待确认单元工程'];
-    for (const divisionName of divisions) {
-      const division = ensureChildNode(unit, divisionName, '分部工程');
-      for (const cellName of cells) {
-        ensureChildNode(division, cellName, '单元工程');
-      }
-    }
-  }
+    const divisionName = analysis.suggestions.divisionWorks[unitIndex] ?? analysis.suggestions.divisionWorks[0] ?? '待确认分部工程';
+    const cellName = analysis.suggestions.cellWorks[unitIndex] ?? analysis.suggestions.cellWorks[0] ?? '待确认单元工程';
+    const division = ensureChildNode(unit, divisionName, '分部工程');
+    ensureChildNode(division, cellName, '单元工程');
+  });
 }
 
 function ensureChildNode(parent, name, type) {
