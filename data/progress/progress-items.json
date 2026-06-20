@@ -1,0 +1,38 @@
+[
+  {
+    "id": "P-001",
+    "task": "控制点复测与坐标成果入库",
+    "owner": "测绘单位",
+    "planned": 100,
+    "done": 72,
+    "amount": 128000,
+    "status": "关注"
+  },
+  {
+    "id": "P-002",
+    "task": "基础处理施工准备",
+    "owner": "施工单位",
+    "planned": 100,
+    "done": 38,
+    "amount": 236000,
+    "status": "风险"
+  },
+  {
+    "id": "P-003",
+    "task": "临时通行便道与围挡",
+    "owner": "总承包单位",
+    "planned": 100,
+    "done": 61,
+    "amount": 184000,
+    "status": "关注"
+  },
+  {
+    "id": "P-004",
+    "task": "GitHub 数据目录初始化",
+    "owner": "蓝箭数据中心",
+    "planned": 100,
+    "done": 100,
+    "amount": 0,
+    "status": "正常"
+  }
+]

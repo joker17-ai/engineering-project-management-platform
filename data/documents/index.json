@@ -1,0 +1,17 @@
+[
+  {
+    "name": "项目立项与授权资料",
+    "folder": "data/documents/approvals",
+    "status": "待补全"
+  },
+  {
+    "name": "工程线位点二测绘成果",
+    "folder": "data/documents/survey",
+    "status": "进行中"
+  },
+  {
+    "name": "质量安全巡检记录",
+    "folder": "data/documents/quality-safety",
+    "status": "待审核"
+  }
+]
