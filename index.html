@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>工程项目全过程监理与现场管理平台</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="admin-shell">
+      <aside class="module-rail" aria-label="一级功能栏目">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" role="img">
+              <path d="M5 8.5h16l6 6v12H5z" />
+              <path d="M21 8.5v6h6" />
+              <path d="M9 14h7" />
+              <path d="M9 19h14" />
+              <path d="M9 23h10" />
+              <path d="M20 3.5l5 5" />
+              <path d="M18 5.5l5 5" />
+            </svg>
+          </span>
+          <div>
+            <strong>工程项目管理平台</strong>
+          </div>
+        </div>
+        <nav id="moduleNav" class="module-nav"></nav>
+      </aside>
+
+      <section class="tree-panel" aria-label="项目结构树">
+        <div class="panel-heading">
+          <span>项目结构树</span>
+          <strong>30000 节点预留</strong>
+        </div>
+        <div id="projectTree" class="project-tree"></div>
+      </section>
+
+      <section class="workspace" aria-label="管理工作台">
+        <header class="workspace-header">
+          <div>
+            <p class="eyebrow">内蒙古*****高标准农田项目管理</p>
+            <h1>电脑端管理后台 · 第一版原型</h1>
+          </div>
+          <div class="header-status">
+            <span>字段准备</span>
+            <strong>接口暂不对接</strong>
+          </div>
+        </header>
+
+        <div id="statsGrid" class="stats-grid"></div>
+
+        <div class="tab-strip" id="tabStrip" aria-label="业务视图切换"></div>
+
+        <section id="contentView" class="content-view"></section>
+      </section>
+
+      <aside class="detail-panel" aria-label="节点详情">
+        <div class="panel-heading">
+          <span>节点详情</span>
+          <strong id="selectedBadge">已选择</strong>
+        </div>
+        <div id="nodeDetail" class="node-detail"></div>
+      </aside>
+    </main>
+
+    <script type="module" src="./src/app.mjs"></script>
+  </body>
+</html>
