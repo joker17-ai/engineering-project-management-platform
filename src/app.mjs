@@ -27,6 +27,26 @@ const tabs = [
 const UPLOAD_DB_NAME = 'engineering_project_uploads_v1';
 const UPLOAD_STORE = 'files';
 const PROJECTS_STORAGE_KEY = 'engineering_project_portfolio_v2';
+const IMPORT_ANALYSIS_STORAGE_KEY = 'engineering_project_import_analysis_v1';
+const SUPPORTED_IMPORT_ACCEPT = [
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.dwg',
+  '.docx',
+  '.doc',
+  '.xls',
+  '.xlsx',
+  '.csv',
+  '.shp',
+  '.geojson',
+  '.json',
+  '.kml',
+  '.zip',
+  '.ppt',
+  '.pptx',
+  '.pdf',
+].join(',');
 
 const state = {
   projects: loadProjects(),
@@ -36,6 +56,7 @@ const state = {
   activeModuleId: 'dashboard',
   activeSubitemIndex: 0,
   activePermissionActor: '项目法人',
+  importAnalyses: loadImportAnalyses(),
 };
 
 state.activeProjectId = state.projects[0].id;
@@ -88,6 +109,22 @@ function loadProjects() {
 
 function saveProjects() {
   localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(state.projects));
+}
+
+function loadImportAnalyses() {
+  const stored = localStorage.getItem(IMPORT_ANALYSIS_STORAGE_KEY);
+  if (!stored) return [];
+
+  try {
+    const parsed = JSON.parse(stored);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveImportAnalyses() {
+  localStorage.setItem(IMPORT_ANALYSIS_STORAGE_KEY, JSON.stringify(state.importAnalyses));
 }
 
 function currentProject() {
@@ -170,18 +207,61 @@ function getBidSections() {
   return flattenProjectTree(currentProject().tree).filter((node) => node.type === '标段');
 }
 
+function getProjectAnalyses() {
+  return state.importAnalyses.filter((item) => item.projectId === state.activeProjectId);
+}
+
+function getDynamicSubitems(module) {
+  const nodes = flattenProjectTree(currentProject().tree);
+  const analyses = getProjectAnalyses();
+  const imported = {
+    unitWorks: [...new Set(analyses.flatMap((item) => item.suggestions.unitWorks))],
+    divisionWorks: [...new Set(analyses.flatMap((item) => item.suggestions.divisionWorks))],
+    cellWorks: [...new Set(analyses.flatMap((item) => item.suggestions.cellWorks))],
+    controls: [...new Set(analyses.flatMap((item) => item.suggestions.controls))],
+  };
+
+  const byType = (type) => nodes.filter((node) => node.type === type).map((node) => node.name);
+  const pick = (primary, fallback) => (primary.length > 0 ? primary : fallback);
+
+  const dynamicMap = {
+    dashboard: pick(imported.unitWorks, ['项目总体状态', '资料解析结果', ...byType('单位工程')]),
+    tree: pick([...byType('标段'), ...byType('单位工程')], module.subitems),
+    network: pick(imported.cellWorks, module.subitems),
+    'quantity-progress': pick(imported.cellWorks, module.subitems),
+    quality: pick(imported.controls, [...byType('单位工程').map((name) => `${name}质量指标`), '班组执行表', '整改闭环']),
+    safety: pick(imported.controls.filter((item) => item.includes('安全') || item.includes('边坡') || item.includes('基坑')), module.subitems),
+    acceptance: pick(imported.controls.filter((item) => item.includes('隐蔽') || item.includes('验收') || item.includes('备案')), module.subitems),
+    drawings: pick(analyses.map((item) => item.name), module.subitems),
+    investment: pick(imported.cellWorks, module.subitems),
+    archive: pick(analyses.map((item) => item.name), module.subitems),
+    templates: module.subitems,
+    'data-intelligence': pick(['资料自动解析库', ...analyses.map((item) => item.name)], module.subitems),
+    participants: module.subitems,
+  };
+
+  return [...new Set(dynamicMap[module.id] ?? module.subitems)].slice(0, 30);
+}
+
+function getActiveSubitem() {
+  const module = moduleCatalog.find((item) => item.id === state.activeModuleId) ?? moduleCatalog[0];
+  return getDynamicSubitems(module)[state.activeSubitemIndex] ?? getDynamicSubitems(module)[0] ?? '';
+}
+
 function renderSecondaryNav() {
   const module = moduleCatalog.find((item) => item.id === state.activeModuleId) ?? moduleCatalog[0];
+  const subitems = getDynamicSubitems(module);
   const host = document.querySelector('#secondaryNav');
-  document.querySelector('#secondaryCount').textContent = `${module.subitems.length} 项`;
-  host.innerHTML = module.subitems
+  if (state.activeSubitemIndex >= subitems.length) state.activeSubitemIndex = 0;
+  document.querySelector('#secondaryCount').textContent = `${subitems.length} 项`;
+  host.innerHTML = subitems
     .map(
       (item, index) => `
         <button class="tree-node ${index === state.activeSubitemIndex ? 'active' : ''}" data-subitem-index="${index}" type="button">
           <span class="tree-node-title">${String(index + 1).padStart(2, '0')} ${item}</span>
           <span class="node-meta">
-            <span>二级目录</span>
-            <span>可配置三级</span>
+            <span>${currentProject().name}</span>
+            <span>动态目录</span>
           </span>
         </button>
       `,
@@ -361,6 +441,71 @@ function renderSourceDocuments() {
   `;
 }
 
+function renderProjectImportPanel() {
+  return `
+    <section class="import-panel">
+      <div>
+        <span class="eyebrow">本地工程文件导入</span>
+        <h3>上传后自动识别并补充当前项目</h3>
+        <p>支持 PNG、JPG、DWG、DOCX、DOC、XLS、XLSX、CSV、SHP、GeoJSON、KML、ZIP、Word 文档和 PPT。可解析内容会生成单位工程、分部工程、单元工程、质量控制和档案资料建议。</p>
+      </div>
+      <input id="projectImportInput" class="visually-hidden" type="file" multiple accept="${SUPPORTED_IMPORT_ACCEPT}" />
+      <button id="projectImportButton" class="upload-button" type="button">导入并分析工程文件</button>
+    </section>
+    ${renderImportAnalysisResults()}
+  `;
+}
+
+function renderImportAnalysisResults() {
+  const analyses = state.importAnalyses.filter((item) => item.projectId === state.activeProjectId);
+  if (analyses.length === 0) {
+    return `
+      <div class="import-empty">
+        <strong>暂无导入分析记录</strong>
+        <span>点击上方按钮选择本地文件后，系统会把识别到的工程对象补充到当前项目。</span>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="import-results">
+      ${analyses
+        .slice(0, 8)
+        .map(
+          (analysis) => `
+            <article class="import-result-card">
+              <div class="import-result-head">
+                <div>
+                  <strong>${escapeHtml(analysis.name)}</strong>
+                  <span>${analysis.type} · ${analysis.status} · ${analysis.uploadedAt}</span>
+                </div>
+                <span class="status ${analysis.status === '已解析' ? 'ok' : 'warning'}">${analysis.status}</span>
+              </div>
+              <p>${escapeHtml(analysis.summary)}</p>
+              <div class="suggestion-grid">
+                ${renderSuggestionBlock('单位工程', analysis.suggestions.unitWorks)}
+                ${renderSuggestionBlock('分部工程', analysis.suggestions.divisionWorks)}
+                ${renderSuggestionBlock('单元工程', analysis.suggestions.cellWorks)}
+                ${renderSuggestionBlock('质量/档案提示', analysis.suggestions.controls)}
+              </div>
+            </article>
+          `,
+        )
+        .join('')}
+    </div>
+  `;
+}
+
+function renderSuggestionBlock(title, items) {
+  const values = [...new Set(items)].slice(0, 5);
+  return `
+    <div class="suggestion-block">
+      <span>${title}</span>
+      ${values.length > 0 ? values.map((item) => `<strong>${escapeHtml(item)}</strong>`).join('') : '<em>待人工补充</em>'}
+    </div>
+  `;
+}
+
 function renderProgress() {
   const total = calculateInvestmentTotal(progressItems);
   return `
@@ -459,6 +604,7 @@ function renderInterfaces() {
     <div class="section-action-row">
       <a class="open-db-link" href="./database.html" target="_blank" rel="noreferrer">打开虚拟数据库项目</a>
     </div>
+    ${renderProjectImportPanel()}
     <div class="view-grid">
       ${mockDatabaseConnections
         .map(
@@ -473,7 +619,7 @@ function renderInterfaces() {
               <div class="file-tags">
                 ${connection.acceptedFiles.map((fileType) => `<span>${fileType}</span>`).join('')}
               </div>
-              <input class="visually-hidden upload-input" data-connection-id="${connection.id}" type="file" multiple />
+              <input class="visually-hidden upload-input" data-connection-id="${connection.id}" type="file" multiple accept="${SUPPORTED_IMPORT_ACCEPT}" />
               <button class="upload-button" data-upload-target="${connection.id}" type="button">手动上传资料</button>
               <div class="uploaded-list" data-upload-list="${connection.id}">
                 <span>正在读取本地资料库...</span>
@@ -488,7 +634,7 @@ function renderInterfaces() {
 
 function renderModuleDetailView() {
   const module = moduleCatalog.find((item) => item.id === state.activeModuleId) ?? moduleCatalog[0];
-  const subitem = module.subitems[state.activeSubitemIndex] ?? module.subitems[0];
+  const subitem = getActiveSubitem();
   if (module.id === 'participants') {
     return renderPermissionManager(module);
   }
@@ -553,6 +699,7 @@ function renderModuleDetailView() {
           <h2>${module.name}</h2>
           <p>${module.purpose}</p>
         </div>
+        ${module.id === 'data-intelligence' ? renderProjectImportPanel() : ''}
         ${renderSourceDocuments()}
       </section>
     `;
@@ -598,7 +745,7 @@ function renderModuleDetailView() {
 }
 
 function renderPermissionManager(module) {
-  const actors = module.subitems;
+  const actors = getDynamicSubitems(module);
   if (!actors.includes(state.activePermissionActor)) {
     state.activePermissionActor = actors[0];
   }
@@ -631,9 +778,9 @@ function renderPermissionManager(module) {
                 <article class="permission-scope">
                   <div>
                     <strong>${scope.name}</strong>
-                    <span>${scope.subitems.length} 个二级目录</span>
+                    <span>${getDynamicSubitems(scope).length} 个二级目录</span>
                   </div>
-                  ${scope.subitems
+                  ${getDynamicSubitems(scope)
                     .slice(0, 4)
                     .map(
                       (subitem) => `
@@ -669,6 +816,7 @@ function renderContent() {
   bindProjectDashboard();
   bindModuleSubitems();
   bindPermissionActors();
+  bindProjectImportControls();
   if (state.activeTab === 'interfaces') {
     bindUploadControls();
   }
@@ -700,11 +848,11 @@ function bindProjectDashboard() {
     const name = input.value.trim();
     if (!name) return;
 
-    const project = {
-      id: `project-${Date.now()}`,
-      name,
-      region: '手动创建',
-      stage: '新建项目',
+      const project = {
+        id: `project-${Date.now()}`,
+        name,
+        region: '手动创建',
+        stage: '新建项目',
       tree: createProjectTree(name),
     };
     state.projects.push(project);
@@ -716,6 +864,28 @@ function bindProjectDashboard() {
 
   document.querySelectorAll('[data-project-id]').forEach((button) => {
     button.addEventListener('click', () => switchProject(button.dataset.projectId));
+  });
+}
+
+function bindProjectImportControls() {
+  const button = document.querySelector('#projectImportButton');
+  const input = document.querySelector('#projectImportInput');
+  if (!button || !input || button.dataset.bound === 'true') return;
+
+  button.dataset.bound = 'true';
+  button.addEventListener('click', () => input.click());
+  input.addEventListener('change', async () => {
+    const files = Array.from(input.files ?? []);
+    for (const file of files) {
+      await saveUploadedFile('source-doc-db', file);
+      const analysis = await analyzeProjectFile(file);
+      applyAnalysisToCurrentProject(analysis);
+      state.importAnalyses.unshift(analysis);
+    }
+    input.value = '';
+    saveImportAnalyses();
+    saveProjects();
+    renderAll();
   });
 }
 
@@ -814,9 +984,17 @@ function bindUploadControls() {
       const files = Array.from(input.files ?? []);
       for (const file of files) {
         await saveUploadedFile(connectionId, file);
+        if (connectionId === 'source-doc-db') {
+          const analysis = await analyzeProjectFile(file);
+          applyAnalysisToCurrentProject(analysis);
+          state.importAnalyses.unshift(analysis);
+        }
       }
       input.value = '';
+      saveImportAnalyses();
+      saveProjects();
       await renderUploadedList(connectionId);
+      renderAll();
     });
     renderUploadedList(input.dataset.connectionId);
   });
@@ -849,4 +1027,242 @@ function formatFileSize(size) {
   if (size < 1024) return `${size} B`;
   if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
   return `${(size / 1024 / 1024).toFixed(1)} MB`;
+}
+
+async function analyzeProjectFile(file) {
+  const extension = getFileExtension(file.name);
+  const text = await extractTextFromFile(file, extension);
+  const suggestions = inferProjectSuggestions(file.name, text, extension);
+  const status = text || ['png', 'jpg', 'jpeg', 'dwg', 'shp', 'doc', 'xls', 'ppt'].includes(extension) ? '已解析' : '待人工确认';
+  return {
+    id: `${Date.now()}-${crypto.randomUUID()}`,
+    projectId: state.activeProjectId,
+    name: file.name,
+    type: extension.toUpperCase() || file.type || '未知格式',
+    size: file.size,
+    uploadedAt: new Date().toLocaleString('zh-CN'),
+    status,
+    summary: buildFileSummary(file.name, extension, text, suggestions),
+    suggestions,
+    textSample: text.slice(0, 1200),
+  };
+}
+
+async function extractTextFromFile(file, extension) {
+  if (['csv', 'geojson', 'json', 'kml'].includes(extension)) {
+    return await readAsText(file);
+  }
+
+  if (['docx', 'xlsx', 'pptx', 'zip'].includes(extension)) {
+    return await extractTextFromZipLike(await file.arrayBuffer(), extension);
+  }
+
+  if (['png', 'jpg', 'jpeg'].includes(extension)) {
+    return `图片资料：${file.name}。浏览器端已记录文件名、格式和大小，后续可接入OCR识别图纸标题、照片点位和现场取证信息。`;
+  }
+
+  if (extension === 'dwg') {
+    return `DWG图纸：${file.name}。浏览器端已入库，需后续接入CAD解析服务或转换为PDF/DXF后提取图层、桩号和构筑物名称。`;
+  }
+
+  if (extension === 'shp') {
+    return `SHP空间数据：${file.name}。SHP通常需要shp/shx/dbf/prj配套文件，建议打包为ZIP上传后进行完整解析。`;
+  }
+
+  if (['doc', 'xls', 'ppt'].includes(extension)) {
+    return `旧版Office文件：${file.name}。浏览器端已入库，建议另存为DOCX/XLSX/PPTX后可提取正文、表格和目录。`;
+  }
+
+  if (extension === 'pdf') {
+    return `PDF资料：${file.name}。浏览器端已入库，后续可接入PDF文字识别服务；当前根据文件名和资料类型生成挂接建议。`;
+  }
+
+  return '';
+}
+
+async function extractTextFromZipLike(arrayBuffer, extension) {
+  const bytes = new Uint8Array(arrayBuffer);
+  const parts = [];
+  let cursor = 0;
+  while (cursor < bytes.length - 30 && parts.join('\n').length < 8000) {
+    if (bytes[cursor] === 0x50 && bytes[cursor + 1] === 0x4b && bytes[cursor + 2] === 0x03 && bytes[cursor + 3] === 0x04) {
+      const compression = readUint16(bytes, cursor + 8);
+      const compressedSize = readUint32(bytes, cursor + 18);
+      const fileNameLength = readUint16(bytes, cursor + 26);
+      const extraLength = readUint16(bytes, cursor + 28);
+      const nameStart = cursor + 30;
+      const name = decodeBytes(bytes.slice(nameStart, nameStart + fileNameLength));
+      const dataStart = nameStart + fileNameLength + extraLength;
+      const dataEnd = dataStart + compressedSize;
+      if (isTextEntry(name)) {
+        if (compression === 0) {
+          parts.push(decodeBytes(bytes.slice(dataStart, dataEnd)));
+        } else if (compression === 8) {
+          parts.push(await inflateRawText(bytes.slice(dataStart, dataEnd)));
+        }
+      } else if (name) {
+        parts.push(name);
+      }
+      cursor = Math.max(dataEnd, cursor + 30);
+    } else {
+      cursor += 1;
+    }
+  }
+
+  const raw = parts.join('\n');
+  if (extension === 'docx') return cleanOfficeXmlText(raw);
+  if (extension === 'xlsx') return cleanOfficeXmlText(raw);
+  if (extension === 'pptx') return cleanOfficeXmlText(raw);
+  return cleanOfficeXmlText(raw);
+}
+
+async function inflateRawText(bytes) {
+  if (!('DecompressionStream' in window)) return '';
+  try {
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    return await new Response(stream).text();
+  } catch {
+    return '';
+  }
+}
+
+function inferProjectSuggestions(fileName, text, extension) {
+  const source = `${fileName}\n${text}`.toLowerCase();
+  const suggestions = {
+    unitWorks: [],
+    divisionWorks: [],
+    cellWorks: [],
+    controls: [],
+  };
+
+  const rules = [
+    { keys: ['大坝', '坝顶', '护坡', '防浪墙'], unit: '大坝除险加固工程', division: '大坝工程', cell: '坝顶、护坡及防渗处理', control: '大坝隐蔽验收与护坡质量控制' },
+    { keys: ['溢洪道', '泄槽', '消能', '驼峰堰', '引渠'], unit: '溢洪道加固工程', division: '溢洪道工程', cell: '开挖、衬砌、消能防护', control: '基础面、边坡、衬砌和排水孔隐蔽验收' },
+    { keys: ['交通桥', '空心板', '支座'], unit: '溢洪道交通桥工程', division: '交通桥工程', cell: '桥梁拆除重建及支座安装', control: '桥面宽度、净跨、支座和钢筋隐蔽验收' },
+    { keys: ['电气', '控制柜', '照明', '接地', '电阻', '电导率'], unit: '电气与安全监测工程', division: '电气设备工程', cell: '控制柜、照明及接地检测', control: '接地电阻、接地电导率和送电前验收' },
+    { keys: ['灌浆', '固结', '裂缝', '压水'], unit: '大坝除险加固工程', division: '斜廊道灌浆工程', cell: '固结灌浆和裂缝化学灌浆', control: '灌浆压力、抬动变形、压水试验和封孔质量' },
+    { keys: ['坐标', 'geojson', 'kml', 'shp', '高程', '点位'], unit: '测量与上图入库资料', division: '工程点位坐标', cell: '地块矢量坐标与工程点位', control: '上图入库字段、坐标系和高程复核' },
+    { keys: ['清单', '单价', '工程量', '计量', '支付'], unit: '进度与投资报表', division: '工程量清单', cell: '投标清单单价与完成工程量', control: '完成工程量乘以投标单价自动计算' },
+    { keys: ['验收', '备案', '会议纪要', '批复', '开工申请'], unit: '档案资料管理', division: '审批验收资料', cell: '开工、隐蔽验收、备案和会议纪要', control: '责任单位、审批状态和归档状态' },
+  ];
+
+  for (const rule of rules) {
+    if (rule.keys.some((key) => source.includes(key))) {
+      suggestions.unitWorks.push(rule.unit);
+      suggestions.divisionWorks.push(rule.division);
+      suggestions.cellWorks.push(rule.cell);
+      suggestions.controls.push(rule.control);
+    }
+  }
+
+  if (['png', 'jpg', 'jpeg', 'dwg'].includes(extension)) {
+    suggestions.unitWorks.push('图纸与现场取证');
+    suggestions.divisionWorks.push('图纸版本与现场照片');
+    suggestions.cellWorks.push('图纸点位、照片锚定和取证资料');
+    suggestions.controls.push('需进行图纸编号、版本和点位人工确认');
+  }
+
+  return suggestions;
+}
+
+function applyAnalysisToCurrentProject(analysis) {
+  const project = currentProject();
+  const root = project.tree;
+  const bid = root.children?.find((node) => node.type === '标段') ?? root.children?.[0];
+  if (!bid) return;
+
+  for (const unitName of analysis.suggestions.unitWorks) {
+    if (['档案资料管理', '进度与投资报表', '图纸与现场取证'].includes(unitName)) continue;
+    const unit = ensureChildNode(bid, unitName, '单位工程');
+    const divisions = analysis.suggestions.divisionWorks.length > 0 ? analysis.suggestions.divisionWorks : ['待确认分部工程'];
+    const cells = analysis.suggestions.cellWorks.length > 0 ? analysis.suggestions.cellWorks : ['待确认单元工程'];
+    for (const divisionName of divisions) {
+      const division = ensureChildNode(unit, divisionName, '分部工程');
+      for (const cellName of cells) {
+        ensureChildNode(division, cellName, '单元工程');
+      }
+    }
+  }
+}
+
+function ensureChildNode(parent, name, type) {
+  parent.children ??= [];
+  let child = parent.children.find((node) => node.name === name && node.type === type);
+  if (!child) {
+    child = {
+      id: `${slugify(type)}-${Date.now()}-${Math.random().toString(16).slice(2, 7)}`,
+      name,
+      type,
+      status: '资料导入',
+      children: [],
+    };
+    parent.children.push(child);
+  }
+  return child;
+}
+
+function buildFileSummary(fileName, extension, text, suggestions) {
+  const readable = text.trim().slice(0, 120);
+  const unitCount = new Set(suggestions.unitWorks).size;
+  const cellCount = new Set(suggestions.cellWorks).size;
+  if (readable) {
+    return `已读取 ${fileName} 的可识别内容，建议补充 ${unitCount} 类单位工程、${cellCount} 类单元工程。摘要：${readable}`;
+  }
+  return `${fileName} 已入库。${extension.toUpperCase()} 格式当前需要转换或人工确认，系统已先根据文件名生成项目挂接建议。`;
+}
+
+function getFileExtension(name) {
+  return name.includes('.') ? name.split('.').pop().toLowerCase() : '';
+}
+
+function readAsText(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ''));
+    reader.onerror = () => resolve('');
+    reader.readAsText(file, 'utf-8');
+  });
+}
+
+function readUint16(bytes, offset) {
+  return bytes[offset] | (bytes[offset + 1] << 8);
+}
+
+function readUint32(bytes, offset) {
+  return (bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24)) >>> 0;
+}
+
+function decodeBytes(bytes) {
+  try {
+    return new TextDecoder('utf-8').decode(bytes);
+  } catch {
+    return '';
+  }
+}
+
+function isTextEntry(name) {
+  return /\.(xml|txt|csv|json|geojson|kml)$/i.test(name) || name.includes('document.xml') || name.includes('sharedStrings.xml') || name.includes('slide');
+}
+
+function cleanOfficeXmlText(raw) {
+  return raw
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function slugify(value) {
+  return encodeURIComponent(value).replaceAll('%', '').toLowerCase().slice(0, 18);
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
 }

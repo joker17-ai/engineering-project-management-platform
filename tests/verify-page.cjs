@@ -15,7 +15,11 @@ const { chromium } = require('playwright');
   });
 
   await page.goto('http://127.0.0.1:4173/', { waitUntil: 'networkidle' });
-  await page.evaluate(() => localStorage.removeItem('engineering_project_portfolio_v1'));
+  await page.evaluate(() => {
+    localStorage.removeItem('engineering_project_portfolio_v1');
+    localStorage.removeItem('engineering_project_portfolio_v2');
+    localStorage.removeItem('engineering_project_import_analysis_v1');
+  });
   await page.reload({ waitUntil: 'networkidle' });
 
   const title = await page.locator('h1').textContent();
@@ -65,6 +69,13 @@ const { chromium } = require('playwright');
   await page.getByRole('button', { name: '接口资料库', exact: true }).click();
   const interfaceCards = await page.locator('.interface-card').count();
   const uploadButtons = await page.locator('.upload-button').count();
+  await page.locator('#projectImportInput').setInputFiles('tests/fixtures/project-import.csv');
+  await page.waitForFunction(() => document.querySelectorAll('.import-result-card').length > 0);
+  const importResultCount = await page.locator('.import-result-card').count();
+  const importSuggestionText = await page.locator('.import-result-card').first().textContent();
+  await page.getByRole('button', { name: '项目结构树', exact: true }).click();
+  const dynamicStructureItems = await page.locator('#secondaryNav .tree-node').allTextContents();
+  await page.getByRole('button', { name: '接口资料库', exact: true }).click();
   await page.locator('.upload-input').first().setInputFiles('tests/fixtures/sample-upload.txt');
   await page.waitForFunction(() => document.querySelectorAll('.uploaded-file').length > 0);
   const uploadedFiles = await page.locator('.uploaded-file').count();
@@ -125,6 +136,9 @@ const { chromium } = require('playwright');
         mapFields,
         interfaceCards,
         uploadButtons,
+        importResultCount,
+        importSuggestionText,
+        dynamicStructureItems,
         uploadedFiles,
         databaseTitle,
         databaseTables,
