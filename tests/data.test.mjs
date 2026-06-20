@@ -7,6 +7,7 @@ import {
   mapStoragePlan,
   mockDatabaseConnections,
   moduleCatalog,
+  projectPortfolio,
   virtualDatabaseTables,
   calculateInvestmentTotal,
   flattenProjectTree,
@@ -23,6 +24,13 @@ test('project tree uses bid section naming instead of project area naming', () =
   const names = flattenProjectTree(projectTree).map((node) => node.name);
   assert.ok(names.includes('第一标段'));
   assert.equal(names.some((name) => name.includes('第一项目区')), false);
+});
+
+test('project portfolio supports multiple project instances with independent trees', () => {
+  assert.ok(projectPortfolio.length >= 2);
+  assert.ok(projectPortfolio.every((project) => project.name.includes('高标准农田项目管理')));
+  assert.notEqual(projectPortfolio[0].id, projectPortfolio[1].id);
+  assert.notEqual(projectPortfolio[0].tree.name, projectPortfolio[1].tree.name);
 });
 
 test('quality control covers the three confirmed high-frequency unit works', () => {

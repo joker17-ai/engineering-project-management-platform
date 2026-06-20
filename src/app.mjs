@@ -7,9 +7,10 @@ import {
   mapStoragePlan,
   mockDatabaseConnections,
   moduleCatalog,
+  projectPortfolio,
   progressItems,
-  projectTree,
   qualityScopes,
+  createProjectTree,
 } from './data.mjs';
 
 const tabs = [
@@ -21,14 +22,21 @@ const tabs = [
   { id: 'interfaces', label: '接口资料库' },
 ];
 
-const state = {
-  selectedNode: flattenProjectTree(projectTree)[0],
-  activeTab: 'overview',
-  activeModuleId: 'dashboard',
-};
-
 const UPLOAD_DB_NAME = 'engineering_project_uploads_v1';
 const UPLOAD_STORE = 'files';
+const PROJECTS_STORAGE_KEY = 'engineering_project_portfolio_v1';
+
+const state = {
+  projects: loadProjects(),
+  activeProjectId: null,
+  selectedNode: null,
+  activeTab: 'overview',
+  activeModuleId: 'dashboard',
+  treeVisible: false,
+};
+
+state.activeProjectId = state.projects[0].id;
+state.selectedNode = flattenProjectTree(currentProject().tree)[0];
 
 const formatMoney = (value) =>
   new Intl.NumberFormat('zh-CN', {
@@ -54,17 +62,59 @@ function renderModules() {
     button.addEventListener('click', () => {
       state.activeModuleId = button.dataset.moduleId;
       state.activeTab = 'module';
+      state.treeVisible = state.activeModuleId === 'tree';
       renderModules();
       renderTabs();
+      renderShellLayout();
+      renderProjectTree();
       renderContent();
       renderModuleDetail();
     });
   });
 }
 
+function loadProjects() {
+  const stored = localStorage.getItem(PROJECTS_STORAGE_KEY);
+  if (!stored) return structuredClone(projectPortfolio);
+
+  try {
+    const parsed = JSON.parse(stored);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : structuredClone(projectPortfolio);
+  } catch {
+    return structuredClone(projectPortfolio);
+  }
+}
+
+function saveProjects() {
+  localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(state.projects));
+}
+
+function currentProject() {
+  return state.projects.find((project) => project.id === state.activeProjectId) ?? state.projects[0];
+}
+
+function switchProject(projectId) {
+  state.activeProjectId = projectId;
+  state.selectedNode = flattenProjectTree(currentProject().tree)[0];
+  renderAll();
+}
+
+function renderShellLayout() {
+  document.querySelector('.admin-shell').classList.toggle('tree-open', state.treeVisible);
+}
+
+function getProjectScopedId(connectionId) {
+  return `${state.activeProjectId}:${connectionId}`;
+}
+
 function renderStats() {
   const statsGrid = document.querySelector('#statsGrid');
-  statsGrid.innerHTML = dashboardStats
+  const stats = [
+    { label: '平台项目数量', value: state.projects.length, suffix: '个项目' },
+    ...dashboardStats,
+  ];
+  statsGrid.innerHTML = stats
+    .slice(0, 4)
     .map(
       (stat) => `
         <article class="metric">
@@ -78,7 +128,7 @@ function renderStats() {
 }
 
 function renderProjectTree() {
-  const nodes = flattenProjectTree(projectTree);
+  const nodes = flattenProjectTree(currentProject().tree);
   const tree = document.querySelector('#projectTree');
   tree.innerHTML = nodes
     .map(
@@ -129,9 +179,33 @@ function renderTabs() {
 
 function renderOverview() {
   return `
+    <section class="project-command">
+      <div>
+        <span class="eyebrow">项目组合管理</span>
+        <h2>一个平台同时管理多个工程项目</h2>
+        <p>项目名称由你在这里手动创建。每一个项目都会形成自己独立的一套项目结构树、资料库、质量安全进度投资和档案管理数据。</p>
+      </div>
+      <form id="projectCreateForm" class="project-create-form">
+        <input id="projectNameInput" type="text" placeholder="请输入项目名称，如：内蒙古*****高标准农田项目管理" />
+        <button class="upload-button" type="submit">创建项目</button>
+      </form>
+    </section>
+    <div class="project-card-grid">
+      ${state.projects
+        .map(
+          (project) => `
+            <button class="project-card ${project.id === state.activeProjectId ? 'active' : ''}" data-project-id="${project.id}" type="button">
+              <span>${project.region}</span>
+              <strong>${project.name}</strong>
+              <small>${project.stage} · ${flattenProjectTree(project.tree).length} 个结构节点</small>
+            </button>
+          `,
+        )
+        .join('')}
+    </div>
     <div class="view-grid">
       <article class="card">
-        <h3>第一版原型范围</h3>
+        <h3>当前项目管理范围</h3>
         <ul>
           <li>优先做高标准农田项目场景</li>
           <li>先做电脑端管理后台</li>
@@ -341,9 +415,36 @@ function renderContent() {
     interfaces: renderInterfaces,
   };
   contentView.innerHTML = renderers[state.activeTab]();
+  bindProjectDashboard();
   if (state.activeTab === 'interfaces') {
     bindUploadControls();
   }
+}
+
+function bindProjectDashboard() {
+  document.querySelector('#projectCreateForm')?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const input = document.querySelector('#projectNameInput');
+    const name = input.value.trim();
+    if (!name) return;
+
+    const project = {
+      id: `project-${Date.now()}`,
+      name,
+      region: '手动创建',
+      stage: '新建项目',
+      tree: createProjectTree(name),
+    };
+    state.projects.push(project);
+    state.activeProjectId = project.id;
+    state.selectedNode = flattenProjectTree(project.tree)[0];
+    saveProjects();
+    renderAll();
+  });
+
+  document.querySelectorAll('[data-project-id]').forEach((button) => {
+    button.addEventListener('click', () => switchProject(button.dataset.projectId));
+  });
 }
 
 function renderNodeDetail() {
@@ -375,6 +476,12 @@ function renderModuleDetail() {
 }
 
 function boot() {
+  renderAll();
+}
+
+function renderAll() {
+  renderShellLayout();
+  renderHeader();
   renderModules();
   renderStats();
   renderProjectTree();
@@ -384,6 +491,16 @@ function boot() {
 }
 
 boot();
+
+function renderHeader() {
+  const project = currentProject();
+  document.querySelector('#currentProjectName').textContent = project.name;
+  document.querySelector('#currentProjectMeta').textContent = `多项目统一管理平台 · 当前项目：${project.name}`;
+  document.querySelector('#projectSwitch').innerHTML = state.projects
+    .map((item) => `<option value="${item.id}" ${item.id === state.activeProjectId ? 'selected' : ''}>${item.name}</option>`)
+    .join('');
+  document.querySelector('#projectSwitch').onchange = (event) => switchProject(event.target.value);
+}
 
 function openUploadDb() {
   return new Promise((resolve, reject) => {
@@ -406,7 +523,7 @@ async function saveUploadedFile(connectionId, file) {
   const database = await openUploadDb();
   const record = {
     id: `${connectionId}-${Date.now()}-${crypto.randomUUID()}`,
-    connectionId,
+    connectionId: getProjectScopedId(connectionId),
     name: file.name,
     size: file.size,
     type: file.type || '未知类型',
@@ -429,7 +546,7 @@ async function getUploadedFiles(connectionId) {
   const files = await new Promise((resolve, reject) => {
     const transaction = database.transaction(UPLOAD_STORE, 'readonly');
     const index = transaction.objectStore(UPLOAD_STORE).index('connectionId');
-    const request = index.getAll(connectionId);
+    const request = index.getAll(getProjectScopedId(connectionId));
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });

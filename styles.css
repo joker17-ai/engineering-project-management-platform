@@ -39,10 +39,14 @@ button {
 
 .admin-shell {
   display: grid;
-  grid-template-columns: 232px 286px minmax(520px, 1fr) 324px;
+  grid-template-columns: 232px minmax(640px, 1fr) 324px;
   gap: 1px;
   min-height: 100vh;
   background: var(--line);
+}
+
+.admin-shell.tree-open {
+  grid-template-columns: 232px 286px minmax(520px, 1fr) 324px;
 }
 
 .module-rail,
@@ -56,6 +60,14 @@ button {
 .tree-panel,
 .detail-panel {
   padding: 18px;
+}
+
+.tree-panel {
+  display: none;
+}
+
+.admin-shell.tree-open .tree-panel {
+  display: block;
 }
 
 .brand {
@@ -231,7 +243,7 @@ h1 {
 }
 
 .header-status {
-  min-width: 170px;
+  min-width: 250px;
   padding: 14px;
   border: 1px solid rgba(96, 211, 148, 0.32);
   background: rgba(96, 211, 148, 0.08);
@@ -246,6 +258,24 @@ h1 {
 .header-status span {
   color: var(--muted);
   font-size: 12px;
+}
+
+.project-switch,
+.project-create-form input {
+  width: 100%;
+  min-height: 38px;
+  margin-top: 8px;
+  padding: 8px 10px;
+  color: var(--text);
+  border: 1px solid var(--line-soft);
+  background: rgba(0, 0, 0, 0.28);
+  border-radius: 7px;
+}
+
+.project-switch:focus,
+.project-create-form input:focus {
+  outline: 1px solid var(--amber);
+  border-color: var(--amber);
 }
 
 .stats-grid {
@@ -296,6 +326,66 @@ h1 {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
+}
+
+.project-command {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 18px;
+  align-items: end;
+  margin-bottom: 14px;
+  padding: 18px;
+  border: 1px solid rgba(94, 199, 216, 0.24);
+  background: rgba(94, 199, 216, 0.07);
+  border-radius: 8px;
+}
+
+.project-command h2 {
+  margin: 4px 0 8px;
+  font-size: 22px;
+}
+
+.project-command p {
+  max-width: 760px;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.project-create-form {
+  display: grid;
+  gap: 10px;
+}
+
+.project-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.project-card {
+  display: grid;
+  gap: 7px;
+  min-height: 110px;
+  padding: 15px;
+  color: var(--text);
+  text-align: left;
+  border: 1px solid var(--line-soft);
+  background: var(--panel-2);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.project-card:hover,
+.project-card.active {
+  border-color: rgba(241, 184, 75, 0.42);
+  background: rgba(241, 184, 75, 0.08);
+}
+
+.project-card span,
+.project-card small {
+  color: var(--muted);
 }
 
 .card,

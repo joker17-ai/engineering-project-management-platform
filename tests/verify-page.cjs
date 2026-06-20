@@ -23,6 +23,13 @@ const { chromium } = require('playwright');
   const brandIconCount = await page.locator('.brand-mark svg').count();
   const moduleCount = await page.locator('.module-button').count();
   const treeCount = await page.locator('.tree-node').count();
+  const treeHiddenByDefault = await page.locator('.tree-panel').evaluate((node) => getComputedStyle(node).display === 'none');
+  const projectCards = await page.locator('.project-card').count();
+  const projectSwitchOptions = await page.locator('#projectSwitch option').count();
+
+  await page.locator('#projectNameInput').fill('内蒙古测试高标准农田项目管理');
+  await page.getByRole('button', { name: '创建项目', exact: true }).click();
+  const createdProjectVisible = await page.getByRole('button', { name: /内蒙古测试高标准农田项目管理/ }).count();
 
   await page.getByRole('button', { name: '时标网络图', exact: true }).click();
   const moduleSubitems = await page.locator('.subitem-card').count();
@@ -59,6 +66,8 @@ const { chromium } = require('playwright');
   const databaseUploadedFiles = await page.locator('#databaseUploadList .uploaded-file').count();
 
   await page.goto('http://127.0.0.1:4173/', { waitUntil: 'networkidle' });
+  await page.getByRole('button', { name: '项目结构树', exact: true }).click();
+  const treeVisibleAfterClick = await page.locator('.tree-panel').evaluate((node) => getComputedStyle(node).display !== 'none');
   await page.locator('.tree-node').nth(3).click();
   const detailTitle = await page.locator('.node-detail h2').textContent();
 
@@ -81,6 +90,11 @@ const { chromium } = require('playwright');
         brandIconCount,
         moduleCount,
         treeCount,
+        treeHiddenByDefault,
+        treeVisibleAfterClick,
+        projectCards,
+        projectSwitchOptions,
+        createdProjectVisible,
         moduleSubitems,
         qualityCards,
         totalText,

@@ -1,50 +1,71 @@
-export const projectTree = {
-  id: 'project-root',
-  name: '内蒙古*****高标准农田项目',
-  type: '项目',
-  status: '进行中',
-  children: [
-    {
-      id: 'area-a',
-      name: '第一标段',
-      type: '标段',
-      status: '重点推进',
-      children: [
-        {
-          id: 'irrigation',
-          name: '灌溉与排水工程',
-          type: '单位工程',
-          status: '关键线路',
-          children: [
-            { id: 'channel', name: '渠道工程', type: '分部工程', status: '施工中' },
-            { id: 'pipe', name: '管道工程', type: '分部工程', status: '待验收' },
-            { id: 'sluice', name: '水闸工程', type: '分部工程', status: '资料待补' },
-          ],
-        },
-        {
-          id: 'road',
-          name: '田间道路工程',
-          type: '单位工程',
-          status: '滞后预警',
-          children: [
-            { id: 'main-road', name: '机耕主路', type: '单元工程', status: '施工中' },
-            { id: 'branch-road', name: '生产支路', type: '单元工程', status: '待开工' },
-          ],
-        },
-        {
-          id: 'land-leveling',
-          name: '田块整治工程',
-          type: '单位工程',
-          status: '正常',
-          children: [
-            { id: 'leveling', name: '土地平整', type: '单元工程', status: '施工中' },
-            { id: 'ridge', name: '田埂修筑', type: '单元工程', status: '待检测' },
-          ],
-        },
-      ],
-    },
-  ],
-};
+export function createProjectTree(projectName = '内蒙古*****高标准农田项目管理') {
+  return {
+    id: 'project-root',
+    name: projectName,
+    type: '项目',
+    status: '进行中',
+    children: [
+      {
+        id: 'area-a',
+        name: '第一标段',
+        type: '标段',
+        status: '重点推进',
+        children: [
+          {
+            id: 'irrigation',
+            name: '灌溉与排水工程',
+            type: '单位工程',
+            status: '关键线路',
+            children: [
+              { id: 'channel', name: '渠道工程', type: '分部工程', status: '施工中' },
+              { id: 'pipe', name: '管道工程', type: '分部工程', status: '待验收' },
+              { id: 'sluice', name: '水闸工程', type: '分部工程', status: '资料待补' },
+            ],
+          },
+          {
+            id: 'road',
+            name: '田间道路工程',
+            type: '单位工程',
+            status: '滞后预警',
+            children: [
+              { id: 'main-road', name: '机耕主路', type: '单元工程', status: '施工中' },
+              { id: 'branch-road', name: '生产支路', type: '单元工程', status: '待开工' },
+            ],
+          },
+          {
+            id: 'land-leveling',
+            name: '田块整治工程',
+            type: '单位工程',
+            status: '正常',
+            children: [
+              { id: 'leveling', name: '土地平整', type: '单元工程', status: '施工中' },
+              { id: 'ridge', name: '田埂修筑', type: '单元工程', status: '待检测' },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+}
+
+export const projectPortfolio = [
+  {
+    id: 'project-001',
+    name: '内蒙古*****高标准农田项目管理',
+    region: '内蒙古自治区',
+    stage: '第一版原型',
+    tree: createProjectTree('内蒙古*****高标准农田项目管理'),
+  },
+  {
+    id: 'project-002',
+    name: '内蒙古第二标段高标准农田项目管理',
+    region: '内蒙古自治区',
+    stage: '资料准备',
+    tree: createProjectTree('内蒙古第二标段高标准农田项目管理'),
+  },
+];
+
+export const projectTree = projectPortfolio[0].tree;
 
 export const qualityScopes = {
   灌溉与排水工程: {
