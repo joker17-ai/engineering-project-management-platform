@@ -23,6 +23,8 @@ test('入口流程包含项目建立和登录验证', async () => {
 
   assert.match(app, /建立第一个项目/);
   assert.match(app, /项目登录验证/);
+  assert.match(app, /验证并继续/);
+  assert.match(app, /验证码通过，请建立项目管理者代码和密码/);
   assert.match(app, /MOCK_VERIFY_CODE = '202620'/);
   assert.match(app, /blue_arrow_project_profile_v1/);
   assert.match(app, /blue_arrow_project_session_v1/);

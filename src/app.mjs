@@ -8,6 +8,12 @@ const state = {
   activeModule: 'overview',
   activeSecondaryIndex: 0,
   profile: loadProfile(),
+  setupDraft: {
+    projectName: currentProject.name,
+    phone: '',
+    verifyCode: '',
+    verified: false,
+  },
 };
 
 function loadProfile() {
@@ -60,51 +66,70 @@ function renderAccessGate(message = '') {
       <form id="createProjectForm" class="access-form">
         <label>
           <span>项目名称</span>
-          <input id="projectNameInput" value="工程线位点二综合治理项目" required />
+          <input id="projectNameInput" value="${state.setupDraft.projectName}" ${state.setupDraft.verified ? 'readonly' : ''} required />
         </label>
         <label>
           <span>项目管理者联系电话</span>
-          <input id="phoneInput" inputmode="tel" placeholder="请输入手机号" required />
+          <input id="phoneInput" inputmode="tel" value="${state.setupDraft.phone}" placeholder="请输入手机号" ${state.setupDraft.verified ? 'readonly' : ''} required />
         </label>
-        <div class="verify-row">
-          <label>
-            <span>手机验证码</span>
-            <input id="verifyCodeInput" inputmode="numeric" placeholder="点击发送后输入验证码" required />
-          </label>
-          <button id="sendCodeButton" class="secondary-action" type="button">发送验证码</button>
-        </div>
-        <label>
-          <span>项目管理者代码</span>
-          <input id="managerCodeInput" value="${managerCodeSeed()}" minlength="8" required />
-        </label>
-        <label>
-          <span>管理者密码</span>
-          <input id="managerPasswordInput" value="LA2026" minlength="6" required />
-        </label>
+        ${
+          state.setupDraft.verified
+            ? `
+              <label>
+                <span>项目管理者代码</span>
+                <input id="managerCodeInput" value="${managerCodeSeed()}" minlength="8" required />
+              </label>
+              <label>
+                <span>管理者密码</span>
+                <input id="managerPasswordInput" value="LA2026" minlength="6" required />
+              </label>
+            `
+            : `
+              <div class="verify-row">
+                <label>
+                  <span>手机验证码</span>
+                  <input id="verifyCodeInput" inputmode="numeric" value="${state.setupDraft.verifyCode}" placeholder="点击发送后输入验证码" required />
+                </label>
+                <button id="sendCodeButton" class="secondary-action" type="button">发送验证码</button>
+              </div>
+            `
+        }
         ${message ? `<p class="access-message">${message}</p>` : ''}
-        <button class="primary-action" type="submit">建立项目</button>
+        <button class="primary-action" type="submit">${state.setupDraft.verified ? '建立项目' : '验证并继续'}</button>
       </form>
     </section>
   `;
 
-  document.querySelector('#sendCodeButton').addEventListener('click', () => {
+  document.querySelector('#sendCodeButton')?.addEventListener('click', () => {
+    captureSetupDraft();
     renderAccessGate(`模拟验证码已发送：${MOCK_VERIFY_CODE}`);
   });
 
   document.querySelector('#createProjectForm').addEventListener('submit', (event) => {
     event.preventDefault();
+    captureSetupDraft();
+
+    if (!state.setupDraft.verified) {
+      if (state.setupDraft.verifyCode !== MOCK_VERIFY_CODE) {
+        renderAccessGate('验证码不正确。原型阶段请使用 202620。');
+        return;
+      }
+      state.setupDraft.verified = true;
+      renderAccessGate('验证码通过，请建立项目管理者代码和密码。');
+      return;
+    }
+
     const form = event.currentTarget;
     const profile = {
-      projectName: form.querySelector('#projectNameInput').value.trim(),
-      phone: form.querySelector('#phoneInput').value.trim(),
-      verifyCode: form.querySelector('#verifyCodeInput').value.trim(),
+      projectName: state.setupDraft.projectName,
+      phone: state.setupDraft.phone,
       managerCode: form.querySelector('#managerCodeInput').value.trim(),
       managerPassword: form.querySelector('#managerPasswordInput').value.trim(),
       createdAt: new Date().toISOString(),
     };
 
-    if (profile.verifyCode !== MOCK_VERIFY_CODE) {
-      renderAccessGate('验证码不正确。原型阶段请使用 202620。');
+    if (!profile.managerCode || !profile.managerPassword) {
+      renderAccessGate('请填写项目管理者代码和管理者密码。');
       return;
     }
 
@@ -112,6 +137,12 @@ function renderAccessGate(message = '') {
     sessionStorage.removeItem(SESSION_KEY);
     renderLoginGate('项目已建立。请使用管理者代码和密码进入后台。');
   });
+}
+
+function captureSetupDraft() {
+  state.setupDraft.projectName = document.querySelector('#projectNameInput')?.value.trim() || currentProject.name;
+  state.setupDraft.phone = document.querySelector('#phoneInput')?.value.trim() || '';
+  state.setupDraft.verifyCode = document.querySelector('#verifyCodeInput')?.value.trim() || state.setupDraft.verifyCode;
 }
 
 function renderLoginGate(message = '') {
