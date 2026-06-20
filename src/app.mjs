@@ -140,7 +140,6 @@ function renderLoginGate(message = '') {
         </label>
         ${message ? `<p class="access-message">${message}</p>` : ''}
         <button class="primary-action" type="submit">进入项目后台</button>
-        <button id="rebuildProjectButton" class="ghost-action" type="button">重新建立第一个项目</button>
       </form>
     </section>
   `;
@@ -155,13 +154,6 @@ function renderLoginGate(message = '') {
     }
     sessionStorage.setItem(SESSION_KEY, 'active');
     renderAll();
-  });
-
-  document.querySelector('#rebuildProjectButton').addEventListener('click', () => {
-    localStorage.removeItem(PROFILE_KEY);
-    sessionStorage.removeItem(SESSION_KEY);
-    state.profile = null;
-    renderAccessGate();
   });
 }
 

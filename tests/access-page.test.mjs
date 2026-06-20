@@ -27,3 +27,11 @@ test('入口流程包含项目建立和登录验证', async () => {
   assert.match(app, /blue_arrow_project_profile_v1/);
   assert.match(app, /blue_arrow_project_session_v1/);
 });
+
+test('项目建立后项目名称锁定，不提供重新建立入口', async () => {
+  const app = await readFile(new URL('../src/app.mjs', import.meta.url), 'utf8');
+
+  assert.match(app, /value="\$\{state\.profile\.projectName\}" readonly/);
+  assert.doesNotMatch(app, /重新建立第一个项目/);
+  assert.doesNotMatch(app, /rebuildProjectButton/);
+});
