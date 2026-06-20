@@ -13,6 +13,18 @@
 - 当前标段：第一标段
 - 项目标识：`assets/blue-arrow-logo.jpg`
 
+## 第一个页面
+
+首次打开平台时先进入项目建立页，字段保持简洁：
+
+- 项目名称
+- 项目管理者联系电话
+- 手机验证码
+- 项目管理者代码
+- 管理者密码
+
+原型阶段验证码为 `202620`。项目建立后，需要再次使用项目管理者代码和密码登录，才会进入三栏后台。
+
 ## GitHub 数据仓库
 
 - 仓库：https://github.com/joker17-ai/engineering-project-management-platform

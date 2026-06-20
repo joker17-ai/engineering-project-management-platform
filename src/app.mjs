@@ -1,9 +1,169 @@
 import { currentProject, getSecondaryItems, getStats, githubRepository, moduleCatalog, moduleDetails, progressItems } from './data.mjs';
 
+const PROFILE_KEY = 'blue_arrow_project_profile_v1';
+const SESSION_KEY = 'blue_arrow_project_session_v1';
+const MOCK_VERIFY_CODE = '202620';
+
 const state = {
   activeModule: 'overview',
   activeSecondaryIndex: 0,
+  profile: loadProfile(),
 };
+
+function loadProfile() {
+  try {
+    return JSON.parse(localStorage.getItem(PROFILE_KEY));
+  } catch {
+    return null;
+  }
+}
+
+function saveProfile(profile) {
+  localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+  state.profile = profile;
+}
+
+function isLoggedIn() {
+  return sessionStorage.getItem(SESSION_KEY) === 'active';
+}
+
+function projectName() {
+  return state.profile?.projectName || currentProject.name;
+}
+
+function managerCodeSeed() {
+  return `LA${String(Date.now()).slice(-6)}`;
+}
+
+function setScreen(mode) {
+  document.body.classList.toggle('access-mode', mode === 'access');
+  document.querySelector('#accessGate').hidden = mode !== 'access';
+  document.querySelector('.admin-shell').hidden = mode !== 'admin';
+}
+
+function renderAccessGate(message = '') {
+  setScreen('access');
+  if (state.profile) {
+    renderLoginGate(message);
+    return;
+  }
+
+  document.querySelector('#accessGate').innerHTML = `
+    <section class="access-card">
+      <div class="access-brand">
+        <img src="./assets/blue-arrow-logo.jpg" alt="蓝箭项目标识" />
+        <div>
+          <span>蓝箭项目管理平台</span>
+          <strong>建立第一个项目</strong>
+        </div>
+      </div>
+      <form id="createProjectForm" class="access-form">
+        <label>
+          <span>项目名称</span>
+          <input id="projectNameInput" value="工程线位点二综合治理项目" required />
+        </label>
+        <label>
+          <span>项目管理者联系电话</span>
+          <input id="phoneInput" inputmode="tel" placeholder="请输入手机号" required />
+        </label>
+        <div class="verify-row">
+          <label>
+            <span>手机验证码</span>
+            <input id="verifyCodeInput" inputmode="numeric" placeholder="点击发送后输入验证码" required />
+          </label>
+          <button id="sendCodeButton" class="secondary-action" type="button">发送验证码</button>
+        </div>
+        <label>
+          <span>项目管理者代码</span>
+          <input id="managerCodeInput" value="${managerCodeSeed()}" minlength="8" required />
+        </label>
+        <label>
+          <span>管理者密码</span>
+          <input id="managerPasswordInput" value="LA2026" minlength="6" required />
+        </label>
+        ${message ? `<p class="access-message">${message}</p>` : ''}
+        <button class="primary-action" type="submit">建立项目</button>
+      </form>
+    </section>
+  `;
+
+  document.querySelector('#sendCodeButton').addEventListener('click', () => {
+    renderAccessGate(`模拟验证码已发送：${MOCK_VERIFY_CODE}`);
+  });
+
+  document.querySelector('#createProjectForm').addEventListener('submit', (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const profile = {
+      projectName: form.querySelector('#projectNameInput').value.trim(),
+      phone: form.querySelector('#phoneInput').value.trim(),
+      verifyCode: form.querySelector('#verifyCodeInput').value.trim(),
+      managerCode: form.querySelector('#managerCodeInput').value.trim(),
+      managerPassword: form.querySelector('#managerPasswordInput').value.trim(),
+      createdAt: new Date().toISOString(),
+    };
+
+    if (profile.verifyCode !== MOCK_VERIFY_CODE) {
+      renderAccessGate('验证码不正确。原型阶段请使用 202620。');
+      return;
+    }
+
+    saveProfile(profile);
+    sessionStorage.removeItem(SESSION_KEY);
+    renderLoginGate('项目已建立。请使用管理者代码和密码进入后台。');
+  });
+}
+
+function renderLoginGate(message = '') {
+  setScreen('access');
+  document.querySelector('#accessGate').innerHTML = `
+    <section class="access-card compact">
+      <div class="access-brand">
+        <img src="./assets/blue-arrow-logo.jpg" alt="蓝箭项目标识" />
+        <div>
+          <span>蓝箭项目管理平台</span>
+          <strong>项目登录验证</strong>
+        </div>
+      </div>
+      <form id="loginProjectForm" class="access-form">
+        <label>
+          <span>项目名称</span>
+          <input value="${state.profile.projectName}" readonly />
+        </label>
+        <label>
+          <span>项目管理者代码</span>
+          <input id="loginCodeInput" required />
+        </label>
+        <label>
+          <span>管理者密码</span>
+          <input id="loginPasswordInput" type="password" required />
+        </label>
+        ${message ? `<p class="access-message">${message}</p>` : ''}
+        <button class="primary-action" type="submit">进入项目后台</button>
+        <button id="rebuildProjectButton" class="ghost-action" type="button">重新建立第一个项目</button>
+      </form>
+    </section>
+  `;
+
+  document.querySelector('#loginProjectForm').addEventListener('submit', (event) => {
+    event.preventDefault();
+    const code = document.querySelector('#loginCodeInput').value.trim();
+    const password = document.querySelector('#loginPasswordInput').value.trim();
+    if (code !== state.profile.managerCode || password !== state.profile.managerPassword) {
+      renderLoginGate('项目管理者代码或密码不正确。');
+      return;
+    }
+    sessionStorage.setItem(SESSION_KEY, 'active');
+    renderAll();
+  });
+
+  document.querySelector('#rebuildProjectButton').addEventListener('click', () => {
+    localStorage.removeItem(PROFILE_KEY);
+    sessionStorage.removeItem(SESSION_KEY);
+    state.profile = null;
+    renderAccessGate();
+  });
+}
 
 function renderModules() {
   document.querySelector('#moduleNav').innerHTML = moduleCatalog
@@ -27,7 +187,7 @@ function renderModules() {
 }
 
 function renderProjectControls() {
-  document.querySelector('#projectSwitch').innerHTML = `<option>${currentProject.shortName}</option>`;
+  document.querySelector('#projectSwitch').innerHTML = `<option>${projectName()}</option>`;
   document.querySelector('#sectionSwitch').innerHTML = `<option>${currentProject.section}</option>`;
 }
 
@@ -97,7 +257,7 @@ function renderContent() {
   view.innerHTML = `
     <section class="module-summary">
       <div>
-        <span class="eyebrow">${currentProject.name}</span>
+        <span class="eyebrow">${projectName()}</span>
         <h1>${module.name}</h1>
       </div>
       <a href="${githubRepository.url}" target="_blank" rel="noreferrer">GitHub</a>
@@ -154,6 +314,7 @@ function statusClass(status = '') {
 }
 
 function renderAll() {
+  setScreen('admin');
   renderModules();
   renderProjectControls();
   renderSecondaryNav();
@@ -162,4 +323,8 @@ function renderAll() {
   renderContent();
 }
 
-renderAll();
+if (state.profile && isLoggedIn()) {
+  renderAll();
+} else {
+  renderAccessGate();
+}
