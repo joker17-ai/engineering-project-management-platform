@@ -293,7 +293,7 @@ function renderProgress() {
     <table class="table">
       <thead>
         <tr>
-          <th>单元过程编号</th>
+          <th>单元工程编号</th>
           <th>单元工程</th>
           <th>计划/完成</th>
           <th>投标单价</th>
