@@ -43,6 +43,14 @@ body.access-mode {
   padding: 24px;
 }
 
+body.access-mode .admin-shell {
+  display: none !important;
+}
+
+body:not(.access-mode) .access-gate {
+  display: none !important;
+}
+
 button,
 select,
 input {
