@@ -37,9 +37,10 @@ const { chromium } = require('playwright');
 
   await page.getByRole('button', { name: '时标网络图', exact: true }).click();
   const moduleSubitems = await page.locator('#secondaryNav .tree-node').count();
-  const focusedSubitem = await page.locator('.focused-subitem h3').textContent();
+  const scheduleRows = await page.locator('.content-view tbody tr').count();
+  const focusedSubitem = await page.locator('.content-view tbody td').nth(1).textContent();
   await page.locator('#secondaryNav .tree-node').nth(1).click();
-  const focusedSubitemAfterClick = await page.locator('.focused-subitem h3').textContent();
+  const focusedSubitemAfterClick = await page.locator('#secondaryNav .tree-node.active .tree-node-title').textContent();
 
   await page.getByRole('button', { name: '参建单位与管理', exact: true }).click();
   const permissionActors = await page.locator('.permission-actor').count();
@@ -110,6 +111,7 @@ const { chromium } = require('playwright');
         unitOverviewRows,
         unitOverviewStatuses,
         moduleSubitems,
+        scheduleRows,
         focusedSubitem,
         focusedSubitemAfterClick,
         permissionActors,

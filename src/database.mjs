@@ -1,6 +1,6 @@
 import { mockDatabaseConnections, virtualDatabaseTables } from './data.mjs';
 
-const STORAGE_KEY = 'farmland_virtual_database_tables_v1';
+const STORAGE_KEY = 'engineering_virtual_database_tables_v2';
 const UPLOAD_DB_NAME = 'engineering_project_uploads_v1';
 const UPLOAD_STORE = 'files';
 

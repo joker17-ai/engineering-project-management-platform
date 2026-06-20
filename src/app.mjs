@@ -9,6 +9,9 @@ import {
   projectPortfolio,
   progressItems,
   qualityScopes,
+  scheduleItems,
+  hiddenAcceptanceItems,
+  sourceDocuments,
   createProjectTree,
 } from './data.mjs';
 
@@ -23,7 +26,7 @@ const tabs = [
 
 const UPLOAD_DB_NAME = 'engineering_project_uploads_v1';
 const UPLOAD_STORE = 'files';
-const PROJECTS_STORAGE_KEY = 'engineering_project_portfolio_v1';
+const PROJECTS_STORAGE_KEY = 'engineering_project_portfolio_v2';
 
 const state = {
   projects: loadProjects(),
@@ -159,7 +162,7 @@ function getCellWorkRows() {
     .map((node, index) => ({
       code: `DY-${String(index + 1).padStart(3, '0')}`,
       name: node.name,
-      status: node.status === '施工中' ? '已开工' : '未开工',
+      status: ['施工中', '关键线路', '已完成', '已验收'].includes(node.status) ? '已开工' : '未开工',
     }));
 }
 
@@ -260,6 +263,101 @@ function renderQuality() {
         )
         .join('')}
     </div>
+  `;
+}
+
+function renderScheduleNetwork() {
+  return `
+    <table class="table">
+      <thead>
+        <tr>
+          <th>节点</th>
+          <th>关键工作</th>
+          <th>计划时间</th>
+          <th>前置条件</th>
+          <th>自由时差</th>
+          <th>关键线路</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${scheduleItems
+          .map(
+            (item) => `
+              <tr>
+                <td>${item.code}</td>
+                <td>${item.task}</td>
+                <td>${item.start} 至 ${item.end}</td>
+                <td>${item.predecessor}</td>
+                <td>${item.floatDays} 天</td>
+                <td><span class="status ${item.critical ? 'danger' : 'ok'}">${item.critical ? '关键' : '可调整'}</span></td>
+              </tr>
+            `,
+          )
+          .join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function renderHiddenAcceptance() {
+  return `
+    <table class="table">
+      <thead>
+        <tr>
+          <th>隐蔽部位</th>
+          <th>触发时点</th>
+          <th>核验内容</th>
+          <th>见证单位</th>
+          <th>状态</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${hiddenAcceptanceItems
+          .map(
+            (item) => `
+              <tr>
+                <td>${item.part}</td>
+                <td>${item.trigger}</td>
+                <td>${item.check}</td>
+                <td>${item.witnesses}</td>
+                <td><span class="status ${item.status}">${item.status}</span></td>
+              </tr>
+            `,
+          )
+          .join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function renderSourceDocuments() {
+  return `
+    <table class="table">
+      <thead>
+        <tr>
+          <th>资料名称</th>
+          <th>类型</th>
+          <th>来源</th>
+          <th>解析状态</th>
+          <th>已生成内容</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${sourceDocuments
+          .map(
+            (item) => `
+              <tr>
+                <td>${item.name}</td>
+                <td>${item.type}</td>
+                <td>${item.source}</td>
+                <td><span class="status ${item.status === '已解析' || item.status === '已入库' ? 'ok' : 'warning'}">${item.status}</span></td>
+                <td>${item.evidence}</td>
+              </tr>
+            `,
+          )
+          .join('')}
+      </tbody>
+    </table>
   `;
 }
 
@@ -395,6 +493,71 @@ function renderModuleDetailView() {
     return renderPermissionManager(module);
   }
 
+  if (module.id === 'network') {
+    return `
+      <section class="module-detail-view">
+        <div class="module-hero">
+          <span>设计资料自动生成</span>
+          <h2>${module.name}</h2>
+          <p>${module.purpose}</p>
+        </div>
+        ${renderScheduleNetwork()}
+      </section>
+    `;
+  }
+
+  if (module.id === 'quantity-progress' || module.id === 'investment') {
+    return `
+      <section class="module-detail-view">
+        <div class="module-hero">
+          <span>投标清单单价计算</span>
+          <h2>${module.name}</h2>
+          <p>${module.purpose}</p>
+        </div>
+        ${renderProgress()}
+      </section>
+    `;
+  }
+
+  if (module.id === 'quality') {
+    return `
+      <section class="module-detail-view">
+        <div class="module-hero">
+          <span>关键工序控制</span>
+          <h2>${module.name}</h2>
+          <p>${module.purpose}</p>
+        </div>
+        ${renderQuality()}
+      </section>
+    `;
+  }
+
+  if (module.id === 'acceptance') {
+    return `
+      <section class="module-detail-view">
+        <div class="module-hero">
+          <span>隐蔽节点闭环</span>
+          <h2>${module.name}</h2>
+          <p>${module.purpose}</p>
+        </div>
+        ${renderHiddenAcceptance()}
+      </section>
+    `;
+  }
+
+  if (module.id === 'drawings' || module.id === 'data-intelligence') {
+    return `
+      <section class="module-detail-view">
+        <div class="module-hero">
+          <span>资料解析与入库</span>
+          <h2>${module.name}</h2>
+          <p>${module.purpose}</p>
+        </div>
+        ${renderSourceDocuments()}
+      </section>
+    `;
+  }
+
   return `
     <section class="module-detail-view">
       <div class="module-hero">
@@ -405,7 +568,7 @@ function renderModuleDetailView() {
       <div class="focused-subitem">
         <span>${String(state.activeSubitemIndex + 1).padStart(2, '0')}</span>
         <h3>${subitem}</h3>
-        <p>该二级目录由右侧竖向目录选择。后续可继续挂接资料、责任单位、审批状态、虚拟数据库记录，并扩展三级子项。</p>
+        <p>该二级目录由左侧二级目录栏选择。后续可继续挂接资料、责任单位、审批状态、虚拟数据库记录，并扩展三级子项。</p>
       </div>
       <div class="view-grid">
         <article class="card">
