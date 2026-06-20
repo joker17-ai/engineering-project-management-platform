@@ -24,22 +24,24 @@ const { chromium } = require('playwright');
   const brandSubtitleCount = await page.locator('.brand small').count();
   const brandIconCount = await page.locator('.brand-mark svg').count();
   const moduleCount = await page.locator('.module-button').count();
-  const treeCount = await page.locator('.tree-node').count();
+  const secondaryPanelVisible = await page.locator('.secondary-panel').evaluate((node) => getComputedStyle(node).display !== 'none');
+  const secondaryItemCount = await page.locator('#secondaryNav .tree-node').count();
+  const tertiaryItemCount = await page.locator('.detail-panel .tree-node').count();
   const metricTexts = await page.locator('.metric').allTextContents();
   const currentUnitWork = await page.locator('#currentUnitWork').textContent();
   const currentDivisionWork = await page.locator('#currentDivisionWork').textContent();
-  const treeHiddenByDefault = await page.locator('.tree-panel').evaluate((node) => getComputedStyle(node).display === 'none');
   const projectSwitchOptions = await page.locator('#projectSwitch option').count();
+  const bidSectionOptions = await page.locator('#bidSectionSwitch option').count();
   const unitOverviewRows = await page.locator('.unit-overview-table tbody tr').count();
   const unitOverviewStatuses = await page.locator('.unit-overview-table .status').allTextContents();
 
   await page.getByRole('button', { name: '时标网络图', exact: true }).click();
-  const moduleSubitems = await page.locator('.module-subnav .tree-node').count();
+  const moduleSubitems = await page.locator('#secondaryNav .tree-node').count();
   const focusedSubitem = await page.locator('.focused-subitem h3').textContent();
-  await page.locator('.module-subnav .tree-node').nth(1).click();
+  await page.locator('#secondaryNav .tree-node').nth(1).click();
   const focusedSubitemAfterClick = await page.locator('.focused-subitem h3').textContent();
 
-  await page.getByRole('button', { name: '参建单位与权限管理', exact: true }).click();
+  await page.getByRole('button', { name: '参建单位与管理', exact: true }).click();
   const permissionActors = await page.locator('.permission-actor').count();
   const permissionChecks = await page.locator('.permission-check input').count();
 
@@ -78,10 +80,6 @@ const { chromium } = require('playwright');
   const databaseUploadedFiles = await page.locator('#databaseUploadList .uploaded-file').count();
 
   await page.goto('http://127.0.0.1:4173/', { waitUntil: 'networkidle' });
-  await page.getByRole('button', { name: '项目结构树', exact: true }).click();
-  const treeVisibleAfterClick = await page.locator('.tree-panel').evaluate((node) => getComputedStyle(node).display !== 'none');
-  await page.locator('.tree-node').nth(3).click();
-  const detailTitle = await page.locator('.node-detail h2').textContent();
 
   const layout = await page.evaluate(() => ({
     scrollWidth: document.documentElement.scrollWidth,
@@ -101,13 +99,14 @@ const { chromium } = require('playwright');
         brandSubtitleCount,
         brandIconCount,
         moduleCount,
-        treeCount,
+        secondaryPanelVisible,
+        secondaryItemCount,
+        tertiaryItemCount,
         metricTexts,
         currentUnitWork,
         currentDivisionWork,
-        treeHiddenByDefault,
-        treeVisibleAfterClick,
         projectSwitchOptions,
+        bidSectionOptions,
         unitOverviewRows,
         unitOverviewStatuses,
         moduleSubitems,
@@ -130,7 +129,6 @@ const { chromium } = require('playwright');
         editableInputs,
         editedValue,
         databaseUploadedFiles,
-        detailTitle,
         layout,
         errors,
       },

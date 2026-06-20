@@ -39,35 +39,23 @@ button {
 
 .admin-shell {
   display: grid;
-  grid-template-columns: 232px minmax(640px, 1fr) 324px;
+  grid-template-columns: 232px 286px minmax(520px, 1fr) 324px;
   gap: 1px;
   min-height: 100vh;
   background: var(--line);
 }
 
-.admin-shell.tree-open {
-  grid-template-columns: 232px 286px minmax(520px, 1fr) 324px;
-}
-
 .module-rail,
-.tree-panel,
+.secondary-panel,
 .workspace,
 .detail-panel {
   background: rgba(7, 9, 10, 0.92);
 }
 
 .module-rail,
-.tree-panel,
+.secondary-panel,
 .detail-panel {
   padding: 18px;
-}
-
-.tree-panel {
-  display: none;
-}
-
-.admin-shell.tree-open .tree-panel {
-  display: block;
 }
 
 .brand {
@@ -175,6 +163,24 @@ button {
   gap: 8px;
 }
 
+.secondary-project-controls {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.secondary-project-controls label {
+  display: grid;
+  gap: 6px;
+}
+
+.secondary-project-controls span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .tree-node {
   display: grid;
   gap: 5px;
@@ -221,21 +227,13 @@ button {
 
 .workspace-header {
   display: grid;
-  grid-template-columns: 250px minmax(220px, 1fr) minmax(250px, auto);
+  grid-template-columns: minmax(240px, 1fr) minmax(250px, auto);
   align-items: center;
   gap: 18px;
   padding: 22px;
   border: 1px solid var(--line-soft);
   background: linear-gradient(135deg, rgba(18, 24, 27, 0.94), rgba(7, 9, 10, 0.82));
   box-shadow: var(--shadow);
-}
-
-.admin-shell.tree-open .workspace-header {
-  grid-template-columns: 250px minmax(0, 1fr);
-}
-
-.admin-shell.tree-open .header-context {
-  grid-column: 1 / -1;
 }
 
 .eyebrow {
@@ -299,7 +297,6 @@ h1 {
 .project-create-form input {
   width: 100%;
   min-height: 38px;
-  margin-top: 8px;
   padding: 8px 10px;
   color: var(--text);
   border: 1px solid var(--line-soft);

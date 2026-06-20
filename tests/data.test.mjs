@@ -72,11 +72,12 @@ test('module catalog lists core management modules with clickable subitems', () 
   assert.ok(moduleCatalog.every((module) => module.subitems.length >= 4));
   assert.ok(moduleCatalog.map((module) => module.name).includes('项目总览舱'));
   assert.ok(moduleCatalog.map((module) => module.name).includes('时标网络图'));
+  assert.ok(moduleCatalog.map((module) => module.name).includes('项目结构树'));
   assert.ok(moduleCatalog.find((module) => module.name === '质量控制图').subitems.includes('三类单位工程质量指标库'));
 });
 
 test('participant module orders contractors and subcontractors in the requested positions', () => {
-  const participants = moduleCatalog.find((module) => module.name === '参建单位与权限管理').subitems;
+  const participants = moduleCatalog.find((module) => module.name === '参建单位与管理').subitems;
   assert.deepEqual(participants.slice(0, 3), ['项目法人', '项目总承包商', '项目分包商']);
   const constructionIndex = participants.indexOf('施工单位');
   assert.equal(participants[constructionIndex + 1], '施工分包商');

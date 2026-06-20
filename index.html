@@ -29,20 +29,26 @@
         <nav id="moduleNav" class="module-nav"></nav>
       </aside>
 
-      <section class="tree-panel" aria-label="项目结构树">
-        <div class="panel-heading">
-          <span>项目结构树</span>
-          <strong>30000 节点预留</strong>
+      <section class="secondary-panel" aria-label="二级目录">
+        <div class="secondary-project-controls">
+          <label>
+            <span>当前项目切换</span>
+            <select id="projectSwitch" class="project-switch" aria-label="当前项目切换"></select>
+          </label>
+          <label>
+            <span>当前标段</span>
+            <select id="bidSectionSwitch" class="project-switch" aria-label="当前标段切换"></select>
+          </label>
         </div>
-        <div id="projectTree" class="project-tree"></div>
+        <div class="panel-heading">
+          <span>二级目录</span>
+          <strong id="secondaryCount">0 项</strong>
+        </div>
+        <div id="secondaryNav" class="project-tree"></div>
       </section>
 
       <section class="workspace" aria-label="管理工作台">
         <header class="workspace-header">
-          <div class="header-project-picker">
-            <span>当前项目切换</span>
-            <select id="projectSwitch" class="project-switch" aria-label="当前项目切换"></select>
-          </div>
           <div class="header-title-block">
             <h1 id="currentProjectName">工程项目管理平台</h1>
           </div>
@@ -65,9 +71,9 @@
         <section id="contentView" class="content-view"></section>
       </section>
 
-      <aside class="detail-panel" aria-label="节点详情">
+      <aside class="detail-panel" aria-label="三级目录">
         <div class="panel-heading">
-          <span>节点详情</span>
+          <span>三级目录</span>
           <strong id="selectedBadge">已选择</strong>
         </div>
         <div id="nodeDetail" class="node-detail"></div>

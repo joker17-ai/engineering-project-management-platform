@@ -33,7 +33,6 @@ const state = {
   activeModuleId: 'dashboard',
   activeSubitemIndex: 0,
   activePermissionActor: '项目法人',
-  treeVisible: false,
 };
 
 state.activeProjectId = state.projects[0].id;
@@ -64,13 +63,11 @@ function renderModules() {
       state.activeModuleId = button.dataset.moduleId;
       state.activeTab = 'module';
       state.activeSubitemIndex = 0;
-      state.treeVisible = state.activeModuleId === 'tree';
       renderModules();
       renderTabs();
-      renderShellLayout();
-      renderProjectTree();
+      renderSecondaryNav();
       renderContent();
-      renderSidePanel();
+      renderTertiaryPanel();
     });
   });
 }
@@ -99,10 +96,6 @@ function switchProject(projectId) {
   state.activeProjectId = projectId;
   state.selectedNode = flattenProjectTree(currentProject().tree)[0];
   renderAll();
-}
-
-function renderShellLayout() {
-  document.querySelector('.admin-shell').classList.toggle('tree-open', state.treeVisible);
 }
 
 function getProjectScopedId(connectionId) {
@@ -171,31 +164,34 @@ function getCellWorkRows() {
     }));
 }
 
-function renderProjectTree() {
-  const nodes = flattenProjectTree(currentProject().tree);
-  const tree = document.querySelector('#projectTree');
-  tree.innerHTML = nodes
+function getBidSections() {
+  return flattenProjectTree(currentProject().tree).filter((node) => node.type === '标段');
+}
+
+function renderSecondaryNav() {
+  const module = moduleCatalog.find((item) => item.id === state.activeModuleId) ?? moduleCatalog[0];
+  const host = document.querySelector('#secondaryNav');
+  document.querySelector('#secondaryCount').textContent = `${module.subitems.length} 项`;
+  host.innerHTML = module.subitems
     .map(
-      (node) => `
-        <button class="tree-node tree-depth-${Math.min(node.depth, 3)} ${node.id === state.selectedNode.id ? 'active' : ''}" data-node-id="${node.id}" type="button">
-          <span class="tree-node-title">
-            <span>${node.name}</span>
-          </span>
+      (item, index) => `
+        <button class="tree-node ${index === state.activeSubitemIndex ? 'active' : ''}" data-subitem-index="${index}" type="button">
+          <span class="tree-node-title">${String(index + 1).padStart(2, '0')} ${item}</span>
           <span class="node-meta">
-            <span>${node.type}</span>
-            <span>${node.status}</span>
+            <span>二级目录</span>
+            <span>可配置三级</span>
           </span>
         </button>
       `,
     )
     .join('');
 
-  tree.querySelectorAll('[data-node-id]').forEach((button) => {
+  host.querySelectorAll('[data-subitem-index]').forEach((button) => {
     button.addEventListener('click', () => {
-      state.selectedNode = nodes.find((node) => node.id === button.dataset.nodeId);
-      renderProjectTree();
-      renderHeader();
-      renderSidePanel();
+      state.activeSubitemIndex = Number(button.dataset.subitemIndex);
+      renderSecondaryNav();
+      renderContent();
+      renderTertiaryPanel();
     });
   });
 }
@@ -217,7 +213,7 @@ function renderTabs() {
       state.activeTab = button.dataset.tabId;
       renderTabs();
       renderContent();
-      renderSidePanel();
+      renderTertiaryPanel();
     });
   });
 }
@@ -522,8 +518,9 @@ function bindModuleSubitems() {
   document.querySelectorAll('[data-subitem-index]').forEach((button) => {
     button.addEventListener('click', () => {
       state.activeSubitemIndex = Number(button.dataset.subitemIndex);
+      renderSecondaryNav();
       renderContent();
-      renderSidePanel();
+      renderTertiaryPanel();
     });
   });
 }
@@ -563,36 +560,24 @@ function bindProjectDashboard() {
   });
 }
 
-function renderNodeDetail() {
-  const detail = document.querySelector('#nodeDetail');
-  const selectedBadge = document.querySelector('#selectedBadge');
-  selectedBadge.textContent = state.selectedNode.type;
-  detail.innerHTML = `
-    <h2>${state.selectedNode.name}</h2>
-    <div class="detail-kv"><span>节点类型</span><strong>${state.selectedNode.type}</strong></div>
-    <div class="detail-kv"><span>当前状态</span><strong>${state.selectedNode.status}</strong></div>
-    <div class="detail-kv"><span>层级深度</span><strong>${state.selectedNode.depth}</strong></div>
-    <div class="detail-kv"><span>可挂要素</span><strong>质量 / 安全 / 进度 / 投资 / 档案</strong></div>
-    <div class="detail-kv"><span>管理原则</span><strong>节点可继续扩展，资料必须归属到节点</strong></div>
-  `;
-}
-
-function renderModuleSideNav() {
+function renderTertiaryPanel() {
   const module = moduleCatalog.find((item) => item.id === state.activeModuleId) ?? moduleCatalog[0];
+  const subitem = module.subitems[state.activeSubitemIndex] ?? module.subitems[0];
+  const tertiaryItems = getTertiaryItems(module, subitem);
   const selectedBadge = document.querySelector('#selectedBadge');
   const detail = document.querySelector('#nodeDetail');
-  selectedBadge.textContent = '二级目录';
+  selectedBadge.textContent = '三级目录';
   detail.innerHTML = `
-    <h2>${module.name}</h2>
+    <h2>${subitem}</h2>
     <div class="module-subnav">
-      ${module.subitems
+      ${tertiaryItems
         .map(
           (item, index) => `
-            <button class="tree-node ${index === state.activeSubitemIndex ? 'active' : ''}" data-subitem-index="${index}" type="button">
+            <button class="tree-node" type="button">
               <span class="tree-node-title">${String(index + 1).padStart(2, '0')} ${item}</span>
               <span class="node-meta">
-                <span>二级目录</span>
-                <span>可扩展三级</span>
+                <span>三级目录</span>
+                <span>${module.name}</span>
               </span>
             </button>
           `,
@@ -600,15 +585,16 @@ function renderModuleSideNav() {
         .join('')}
     </div>
   `;
-  bindModuleSubitems();
 }
 
-function renderSidePanel() {
-  if (state.activeModuleId === 'tree' && state.treeVisible) {
-    renderNodeDetail();
-    return;
+function getTertiaryItems(module, subitem) {
+  if (module.id === 'participants') {
+    return ['查看权限', '填报权限', '审批权限', '导出权限', '资料库记录权限'];
   }
-  renderModuleSideNav();
+  if (module.id === 'dashboard') {
+    return ['单元工程清单', '已开工状态', '未开工状态', '责任单位', '资料完整度'];
+  }
+  return [`${subitem}资料挂接`, `${subitem}责任单位`, `${subitem}审批状态`, `${subitem}数据记录`, `${subitem}导出归档`];
 }
 
 function boot() {
@@ -616,14 +602,13 @@ function boot() {
 }
 
 function renderAll() {
-  renderShellLayout();
   renderHeader();
   renderModules();
   renderStats();
-  renderProjectTree();
+  renderSecondaryNav();
   renderTabs();
   renderContent();
-  renderSidePanel();
+  renderTertiaryPanel();
 }
 
 boot();
@@ -638,6 +623,9 @@ function renderHeader() {
     .map((item) => `<option value="${item.id}" ${item.id === state.activeProjectId ? 'selected' : ''}>${item.name}</option>`)
     .join('');
   document.querySelector('#projectSwitch').onchange = (event) => switchProject(event.target.value);
+  document.querySelector('#bidSectionSwitch').innerHTML = getBidSections()
+    .map((item) => `<option value="${item.id}">${item.name}</option>`)
+    .join('');
 }
 
 function openUploadDb() {
