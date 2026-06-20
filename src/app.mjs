@@ -27,6 +27,9 @@ const state = {
   activeModuleId: 'dashboard',
 };
 
+const UPLOAD_DB_NAME = 'engineering_project_uploads_v1';
+const UPLOAD_STORE = 'files';
+
 const formatMoney = (value) =>
   new Intl.NumberFormat('zh-CN', {
     style: 'currency',
@@ -287,7 +290,11 @@ function renderInterfaces() {
               <div class="file-tags">
                 ${connection.acceptedFiles.map((fileType) => `<span>${fileType}</span>`).join('')}
               </div>
-              <button class="upload-button" type="button">手动上传资料</button>
+              <input class="visually-hidden upload-input" data-connection-id="${connection.id}" type="file" multiple />
+              <button class="upload-button" data-upload-target="${connection.id}" type="button">手动上传资料</button>
+              <div class="uploaded-list" data-upload-list="${connection.id}">
+                <span>正在读取本地资料库...</span>
+              </div>
             </article>
           `,
         )
@@ -334,6 +341,9 @@ function renderContent() {
     interfaces: renderInterfaces,
   };
   contentView.innerHTML = renderers[state.activeTab]();
+  if (state.activeTab === 'interfaces') {
+    bindUploadControls();
+  }
 }
 
 function renderNodeDetail() {
@@ -374,3 +384,105 @@ function boot() {
 }
 
 boot();
+
+function openUploadDb() {
+  return new Promise((resolve, reject) => {
+    const request = window.indexedDB.open(UPLOAD_DB_NAME, 1);
+
+    request.onupgradeneeded = () => {
+      const database = request.result;
+      if (!database.objectStoreNames.contains(UPLOAD_STORE)) {
+        const store = database.createObjectStore(UPLOAD_STORE, { keyPath: 'id' });
+        store.createIndex('connectionId', 'connectionId');
+      }
+    };
+
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function saveUploadedFile(connectionId, file) {
+  const database = await openUploadDb();
+  const record = {
+    id: `${connectionId}-${Date.now()}-${crypto.randomUUID()}`,
+    connectionId,
+    name: file.name,
+    size: file.size,
+    type: file.type || '未知类型',
+    uploadedAt: new Date().toLocaleString('zh-CN'),
+    file,
+  };
+
+  await new Promise((resolve, reject) => {
+    const transaction = database.transaction(UPLOAD_STORE, 'readwrite');
+    transaction.objectStore(UPLOAD_STORE).put(record);
+    transaction.oncomplete = resolve;
+    transaction.onerror = () => reject(transaction.error);
+  });
+
+  database.close();
+}
+
+async function getUploadedFiles(connectionId) {
+  const database = await openUploadDb();
+  const files = await new Promise((resolve, reject) => {
+    const transaction = database.transaction(UPLOAD_STORE, 'readonly');
+    const index = transaction.objectStore(UPLOAD_STORE).index('connectionId');
+    const request = index.getAll(connectionId);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+  database.close();
+  return files.sort((a, b) => String(b.uploadedAt).localeCompare(String(a.uploadedAt)));
+}
+
+function bindUploadControls() {
+  document.querySelectorAll('[data-upload-target]').forEach((button) => {
+    button.addEventListener('click', () => {
+      document.querySelector(`.upload-input[data-connection-id="${button.dataset.uploadTarget}"]`)?.click();
+    });
+  });
+
+  document.querySelectorAll('.upload-input').forEach((input) => {
+    input.addEventListener('change', async () => {
+      const connectionId = input.dataset.connectionId;
+      const files = Array.from(input.files ?? []);
+      for (const file of files) {
+        await saveUploadedFile(connectionId, file);
+      }
+      input.value = '';
+      await renderUploadedList(connectionId);
+    });
+    renderUploadedList(input.dataset.connectionId);
+  });
+}
+
+async function renderUploadedList(connectionId) {
+  const host = document.querySelector(`[data-upload-list="${connectionId}"]`);
+  if (!host) return;
+
+  const files = await getUploadedFiles(connectionId);
+  if (files.length === 0) {
+    host.innerHTML = '<span>暂无上传资料</span>';
+    return;
+  }
+
+  host.innerHTML = files
+    .slice(0, 4)
+    .map(
+      (file) => `
+        <div class="uploaded-file">
+          <strong>${file.name}</strong>
+          <span>${formatFileSize(file.size)} · ${file.uploadedAt}</span>
+        </div>
+      `,
+    )
+    .join('');
+}
+
+function formatFileSize(size) {
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / 1024 / 1024).toFixed(1)} MB`;
+}

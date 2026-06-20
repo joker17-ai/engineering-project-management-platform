@@ -465,6 +465,65 @@ h1 {
   filter: brightness(1.08);
 }
 
+.secondary-button {
+  width: 100%;
+  min-height: 36px;
+  color: var(--text);
+  font-weight: 700;
+  border: 1px solid var(--line-soft);
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.secondary-button:hover {
+  border-color: rgba(241, 184, 75, 0.38);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.uploaded-list {
+  display: grid;
+  gap: 7px;
+  min-height: 32px;
+  padding: 10px;
+  border: 1px dashed rgba(255, 255, 255, 0.13);
+  background: rgba(255, 255, 255, 0.025);
+  border-radius: 7px;
+}
+
+.uploaded-list > span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.uploaded-file {
+  display: grid;
+  gap: 3px;
+  padding: 8px;
+  border: 1px solid var(--line-soft);
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 6px;
+}
+
+.uploaded-file strong {
+  color: var(--text);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.uploaded-file span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
 .section-action-row {
   display: flex;
   justify-content: flex-end;
@@ -610,9 +669,19 @@ h1 {
 
 .database-summary {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 220px;
+  grid-template-columns: minmax(0, 1fr) 240px 260px;
   gap: 12px;
   align-items: stretch;
+}
+
+.database-actions {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.database-upload-list {
+  align-content: start;
 }
 
 .database-table-host {

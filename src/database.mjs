@@ -1,6 +1,8 @@
 import { mockDatabaseConnections, virtualDatabaseTables } from './data.mjs';
 
 const STORAGE_KEY = 'farmland_virtual_database_tables_v1';
+const UPLOAD_DB_NAME = 'engineering_project_uploads_v1';
+const UPLOAD_STORE = 'files';
 
 const state = {
   activeTableId: virtualDatabaseTables[0].id,
@@ -68,7 +70,14 @@ function renderSummary() {
         <span>本地暂存</span>
       </div>
     </article>
-    <button class="upload-button" id="resetTable" type="button">恢复当前表默认数据</button>
+    <div class="database-actions">
+      <input class="visually-hidden" id="databaseUploadInput" type="file" multiple />
+      <button class="upload-button" id="databaseUploadButton" type="button">上传资料到当前表</button>
+      <button class="secondary-button" id="resetTable" type="button">恢复当前表默认数据</button>
+    </div>
+    <div class="uploaded-list database-upload-list" id="databaseUploadList">
+      <span>正在读取上传资料...</span>
+    </div>
   `;
 
   document.querySelector('#resetTable').addEventListener('click', () => {
@@ -78,6 +87,21 @@ function renderSummary() {
     saveTables();
     render();
   });
+
+  document.querySelector('#databaseUploadButton').addEventListener('click', () => {
+    document.querySelector('#databaseUploadInput').click();
+  });
+
+  document.querySelector('#databaseUploadInput').addEventListener('change', async (event) => {
+    const files = Array.from(event.target.files ?? []);
+    for (const file of files) {
+      await saveUploadedFile(table.id, file);
+    }
+    event.target.value = '';
+    await renderUploadedList(table.id);
+  });
+
+  renderUploadedList(table.id);
 }
 
 function renderEditableTable() {
@@ -137,3 +161,84 @@ function render() {
 }
 
 render();
+
+function openUploadDb() {
+  return new Promise((resolve, reject) => {
+    const request = window.indexedDB.open(UPLOAD_DB_NAME, 1);
+
+    request.onupgradeneeded = () => {
+      const database = request.result;
+      if (!database.objectStoreNames.contains(UPLOAD_STORE)) {
+        const store = database.createObjectStore(UPLOAD_STORE, { keyPath: 'id' });
+        store.createIndex('connectionId', 'connectionId');
+      }
+    };
+
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function saveUploadedFile(connectionId, file) {
+  const database = await openUploadDb();
+  const record = {
+    id: `${connectionId}-${Date.now()}-${crypto.randomUUID()}`,
+    connectionId,
+    name: file.name,
+    size: file.size,
+    type: file.type || '未知类型',
+    uploadedAt: new Date().toLocaleString('zh-CN'),
+    file,
+  };
+
+  await new Promise((resolve, reject) => {
+    const transaction = database.transaction(UPLOAD_STORE, 'readwrite');
+    transaction.objectStore(UPLOAD_STORE).put(record);
+    transaction.oncomplete = resolve;
+    transaction.onerror = () => reject(transaction.error);
+  });
+
+  database.close();
+}
+
+async function getUploadedFiles(connectionId) {
+  const database = await openUploadDb();
+  const files = await new Promise((resolve, reject) => {
+    const transaction = database.transaction(UPLOAD_STORE, 'readonly');
+    const index = transaction.objectStore(UPLOAD_STORE).index('connectionId');
+    const request = index.getAll(connectionId);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+  database.close();
+  return files.sort((a, b) => String(b.uploadedAt).localeCompare(String(a.uploadedAt)));
+}
+
+async function renderUploadedList(connectionId) {
+  const host = document.querySelector('#databaseUploadList');
+  if (!host) return;
+
+  const files = await getUploadedFiles(connectionId);
+  if (files.length === 0) {
+    host.innerHTML = '<span>当前表暂无上传资料</span>';
+    return;
+  }
+
+  host.innerHTML = files
+    .slice(0, 6)
+    .map(
+      (file) => `
+        <div class="uploaded-file">
+          <strong>${file.name}</strong>
+          <span>${formatFileSize(file.size)} · ${file.uploadedAt}</span>
+        </div>
+      `,
+    )
+    .join('');
+}
+
+function formatFileSize(size) {
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / 1024 / 1024).toFixed(1)} MB`;
+}

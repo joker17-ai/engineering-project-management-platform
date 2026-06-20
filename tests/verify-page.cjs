@@ -43,6 +43,9 @@ const { chromium } = require('playwright');
   await page.getByRole('button', { name: '接口资料库', exact: true }).click();
   const interfaceCards = await page.locator('.interface-card').count();
   const uploadButtons = await page.locator('.upload-button').count();
+  await page.locator('.upload-input').first().setInputFiles('tests/fixtures/sample-upload.txt');
+  await page.waitForFunction(() => document.querySelectorAll('.uploaded-file').length > 0);
+  const uploadedFiles = await page.locator('.uploaded-file').count();
 
   await page.goto('http://127.0.0.1:4173/database.html', { waitUntil: 'networkidle' });
   const databaseTitle = await page.locator('h1').textContent();
@@ -51,6 +54,9 @@ const { chromium } = require('playwright');
   const firstEditable = page.locator('.editable-table input:not([readonly])').first();
   await firstEditable.fill('第一标段-已编辑');
   const editedValue = await firstEditable.inputValue();
+  await page.locator('#databaseUploadInput').setInputFiles('tests/fixtures/sample-upload.txt');
+  await page.waitForFunction(() => document.querySelectorAll('#databaseUploadList .uploaded-file').length > 0);
+  const databaseUploadedFiles = await page.locator('#databaseUploadList .uploaded-file').count();
 
   await page.goto('http://127.0.0.1:4173/', { waitUntil: 'networkidle' });
   await page.locator('.tree-node').nth(3).click();
@@ -82,10 +88,12 @@ const { chromium } = require('playwright');
         mapCards,
         interfaceCards,
         uploadButtons,
+        uploadedFiles,
         databaseTitle,
         databaseTables,
         editableInputs,
         editedValue,
+        databaseUploadedFiles,
         detailTitle,
         layout,
         errors,
