@@ -301,17 +301,6 @@ button {
   overflow: auto;
 }
 
-.workspace-header {
-  display: grid;
-  grid-template-columns: minmax(240px, 1fr) minmax(250px, auto);
-  align-items: center;
-  gap: 18px;
-  padding: 22px;
-  border: 1px solid var(--line-soft);
-  background: linear-gradient(135deg, rgba(18, 24, 27, 0.94), rgba(7, 9, 10, 0.82));
-  box-shadow: var(--shadow);
-}
-
 .eyebrow {
   margin: 0 0 8px;
   font-size: 12px;
@@ -322,50 +311,6 @@ h1 {
   font-size: 24px;
   font-weight: 800;
   letter-spacing: 0;
-  overflow-wrap: anywhere;
-}
-
-.header-project-picker {
-  padding: 14px;
-  border: 1px solid rgba(96, 211, 148, 0.32);
-  background: rgba(96, 211, 148, 0.08);
-  border-radius: 8px;
-}
-
-.header-project-picker span,
-.header-context span,
-.header-context strong {
-  display: block;
-}
-
-.header-project-picker span,
-.header-context span {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.header-title-block {
-  min-width: 0;
-}
-
-.header-context {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(112px, 1fr));
-  gap: 10px;
-}
-
-.header-context div {
-  min-height: 64px;
-  padding: 11px;
-  border: 1px solid var(--line-soft);
-  background: rgba(255, 255, 255, 0.035);
-  border-radius: 8px;
-}
-
-.header-context strong {
-  margin-top: 6px;
-  color: var(--text);
-  font-size: 14px;
   overflow-wrap: anywhere;
 }
 

@@ -1420,7 +1420,7 @@ function renderAll() {
   document.querySelector('#accessGate').innerHTML = '';
   document.querySelector('.admin-shell').hidden = false;
   document.body.classList.remove('access-mode');
-  renderHeader();
+  renderProjectControls();
   renderModules();
   renderStats();
   renderSecondaryNav();
@@ -1430,12 +1430,7 @@ function renderAll() {
 
 boot();
 
-function renderHeader() {
-  const project = currentProject();
-  const currentNode = state.selectedNode ?? flattenProjectTree(project.tree)[0];
-  document.querySelector('#currentProjectName').textContent = project.name;
-  document.querySelector('#currentUnitWork').textContent = findNodeAncestor(currentNode, '单位工程');
-  document.querySelector('#currentDivisionWork').textContent = findNodeAncestor(currentNode, '分部工程');
+function renderProjectControls() {
   document.querySelector('#projectSwitch').innerHTML = state.projects
     .map((item) => `<option value="${item.id}" ${item.id === state.activeProjectId ? 'selected' : ''}>${item.name}</option>`)
     .join('');

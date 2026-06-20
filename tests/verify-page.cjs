@@ -26,7 +26,8 @@ const { chromium } = require('playwright');
   await page.locator('#accessCreateForm button[type="submit"]').click();
   await page.waitForSelector('.admin-shell:not([hidden])');
 
-  const title = await page.locator('h1').textContent();
+  const title = await page.locator('#projectSwitch option:checked').textContent();
+  const workspaceHeaderCount = await page.locator('.workspace-header').count();
   const credentialRows = await page.locator('.credential-table tbody tr').count();
   const managerCodeText = await page.locator('.manager-code-card strong').textContent();
   const brandTitle = await page.locator('.brand strong').textContent();
@@ -38,8 +39,6 @@ const { chromium } = require('playwright');
   const secondaryItemCount = await page.locator('#secondaryNav .tree-node').count();
   const detailPanelCount = await page.locator('.detail-panel').count();
   const metricTexts = await page.locator('.metric').allTextContents();
-  const currentUnitWork = await page.locator('#currentUnitWork').textContent();
-  const currentDivisionWork = await page.locator('#currentDivisionWork').textContent();
   const projectSwitchOptions = await page.locator('#projectSwitch option').count();
   const bidSectionOptions = await page.locator('#bidSectionSwitch option').count();
   const unitOverviewRows = await page.locator('.unit-overview-table tbody tr').count();
@@ -112,6 +111,7 @@ const { chromium } = require('playwright');
     JSON.stringify(
       {
         title,
+        workspaceHeaderCount,
         credentialRows,
         managerCodeText,
         brandTitle,
@@ -123,8 +123,6 @@ const { chromium } = require('playwright');
         secondaryItemCount,
         detailPanelCount,
         metricTexts,
-        currentUnitWork,
-        currentDivisionWork,
         projectSwitchOptions,
         bidSectionOptions,
         unitOverviewRows,
