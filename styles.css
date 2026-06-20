@@ -39,7 +39,7 @@ button {
 
 .admin-shell {
   display: grid;
-  grid-template-columns: 232px 286px minmax(520px, 1fr) 324px;
+  grid-template-columns: 232px 286px minmax(760px, 1fr);
   gap: 1px;
   min-height: 100vh;
   background: var(--line);
@@ -47,14 +47,12 @@ button {
 
 .module-rail,
 .secondary-panel,
-.workspace,
-.detail-panel {
+.workspace {
   background: rgba(7, 9, 10, 0.92);
 }
 
 .module-rail,
-.secondary-panel,
-.detail-panel {
+.secondary-panel {
   padding: 18px;
 }
 
@@ -507,10 +505,6 @@ h1 {
   display: block;
   height: 100%;
   background: linear-gradient(90deg, var(--green), var(--amber));
-}
-
-.detail-panel {
-  overflow: auto;
 }
 
 .node-detail {

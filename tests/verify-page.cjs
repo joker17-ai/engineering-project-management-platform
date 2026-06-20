@@ -26,7 +26,7 @@ const { chromium } = require('playwright');
   const moduleCount = await page.locator('.module-button').count();
   const secondaryPanelVisible = await page.locator('.secondary-panel').evaluate((node) => getComputedStyle(node).display !== 'none');
   const secondaryItemCount = await page.locator('#secondaryNav .tree-node').count();
-  const tertiaryItemCount = await page.locator('.detail-panel .tree-node').count();
+  const detailPanelCount = await page.locator('.detail-panel').count();
   const metricTexts = await page.locator('.metric').allTextContents();
   const currentUnitWork = await page.locator('#currentUnitWork').textContent();
   const currentDivisionWork = await page.locator('#currentDivisionWork').textContent();
@@ -101,7 +101,7 @@ const { chromium } = require('playwright');
         moduleCount,
         secondaryPanelVisible,
         secondaryItemCount,
-        tertiaryItemCount,
+        detailPanelCount,
         metricTexts,
         currentUnitWork,
         currentDivisionWork,

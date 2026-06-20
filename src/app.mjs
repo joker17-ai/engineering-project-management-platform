@@ -67,7 +67,6 @@ function renderModules() {
       renderTabs();
       renderSecondaryNav();
       renderContent();
-      renderTertiaryPanel();
     });
   });
 }
@@ -191,7 +190,6 @@ function renderSecondaryNav() {
       state.activeSubitemIndex = Number(button.dataset.subitemIndex);
       renderSecondaryNav();
       renderContent();
-      renderTertiaryPanel();
     });
   });
 }
@@ -213,7 +211,6 @@ function renderTabs() {
       state.activeTab = button.dataset.tabId;
       renderTabs();
       renderContent();
-      renderTertiaryPanel();
     });
   });
 }
@@ -520,7 +517,6 @@ function bindModuleSubitems() {
       state.activeSubitemIndex = Number(button.dataset.subitemIndex);
       renderSecondaryNav();
       renderContent();
-      renderTertiaryPanel();
     });
   });
 }
@@ -560,43 +556,6 @@ function bindProjectDashboard() {
   });
 }
 
-function renderTertiaryPanel() {
-  const module = moduleCatalog.find((item) => item.id === state.activeModuleId) ?? moduleCatalog[0];
-  const subitem = module.subitems[state.activeSubitemIndex] ?? module.subitems[0];
-  const tertiaryItems = getTertiaryItems(module, subitem);
-  const selectedBadge = document.querySelector('#selectedBadge');
-  const detail = document.querySelector('#nodeDetail');
-  selectedBadge.textContent = '三级目录';
-  detail.innerHTML = `
-    <h2>${subitem}</h2>
-    <div class="module-subnav">
-      ${tertiaryItems
-        .map(
-          (item, index) => `
-            <button class="tree-node" type="button">
-              <span class="tree-node-title">${String(index + 1).padStart(2, '0')} ${item}</span>
-              <span class="node-meta">
-                <span>三级目录</span>
-                <span>${module.name}</span>
-              </span>
-            </button>
-          `,
-        )
-        .join('')}
-    </div>
-  `;
-}
-
-function getTertiaryItems(module, subitem) {
-  if (module.id === 'participants') {
-    return ['查看权限', '填报权限', '审批权限', '导出权限', '资料库记录权限'];
-  }
-  if (module.id === 'dashboard') {
-    return ['单元工程清单', '已开工状态', '未开工状态', '责任单位', '资料完整度'];
-  }
-  return [`${subitem}资料挂接`, `${subitem}责任单位`, `${subitem}审批状态`, `${subitem}数据记录`, `${subitem}导出归档`];
-}
-
 function boot() {
   renderAll();
 }
@@ -608,7 +567,6 @@ function renderAll() {
   renderSecondaryNav();
   renderTabs();
   renderContent();
-  renderTertiaryPanel();
 }
 
 boot();
