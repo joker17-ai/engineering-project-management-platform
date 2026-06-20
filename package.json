@@ -4,8 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "python -m http.server 4173",
+    "build": "node build.mjs",
     "test": "node --test tests/data.test.mjs"
   }
 }
-
