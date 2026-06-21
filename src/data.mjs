@@ -83,9 +83,12 @@ export const currentProject = {
 
 export const moduleDetails = {
   overview: [
-    { name: '当前项目状态', status: '推进中', note: '聚焦当前项目，不混合显示其他项目内容。' },
-    { name: 'GitHub 数据托管', status: '已关联', note: githubRepository.cloneUrl },
-    { name: 'DeepSeek R1 接入', status: '预留接口', note: '资料解析成果进入待确认状态后再写入正式结构。' },
+    { name: '项目总体状态', status: '挂接入口', note: '点击后可继续挂接资料、责任单位、审批状态和虚拟数据库记录' },
+    { name: '关键节点预警', status: '挂接入口', note: '点击后可继续挂接资料、责任单位、审批状态和虚拟数据库记录' },
+    { name: '质量问题汇总', status: '挂接入口', note: '点击后可继续挂接资料、责任单位、审批状态和虚拟数据库记录' },
+    { name: '安全隐患汇总', status: '挂接入口', note: '点击后可继续挂接资料、责任单位、审批状态和虚拟数据库记录' },
+    { name: '投资完成概览', status: '挂接入口', note: '点击后可继续挂接资料、责任单位、审批状态和虚拟数据库记录' },
+    { name: '待审批资料', status: '挂接入口', note: '点击后可继续挂接资料、责任单位、审批状态和虚拟数据库记录' },
   ],
   structure: [
     { name: '溢洪道加固工程', status: '动态目录', note: '下挂开挖、衬砌、消能防护等单元工程。' },
@@ -125,7 +128,7 @@ export const moduleDetails = {
   drawings: [
     { name: '施工图纸目录', status: '待导入', note: '支持 PDF、DWG、JPG、PNG、ZIP。' },
     { name: '现场照片取证', status: '待导入', note: '预留点位、时间、坐标、角度字段。' },
-    { name: '图纸版本比对', status: '预留接口', note: '后续接 OCR、CAD、PDF 解析服务。' },
+    { name: '图纸版本比对', status: '硅基流动视觉接口', note: '图片、图纸、现场照片和视频帧由硅基流动识别；文字说明再交给 DeepSeek R1 结构分析。' },
   ],
   investment: [
     { name: '周报汇总', status: '进行中', note: '按单元工程完成量汇总。' },
@@ -144,7 +147,8 @@ export const moduleDetails = {
   ],
   intelligence: [
     { name: '资料导入解析', status: '可演示', note: '前端原型阶段先按文件目录与关键字段模拟。' },
-    { name: 'DeepSeek R1 专项服务', status: '待接入', note: '正式阶段由后端调用并回写待确认成果。' },
+    { name: 'DeepSeek R1 文字资料专项服务', status: '待接入', note: '正式阶段负责文字资料、表格内容、结构划分和规则推理。' },
+    { name: '硅基流动视觉识别服务', status: '已预留', note: '正式阶段负责图片、图纸、照片、视频帧识别，再把识别结果交给文字分析链路。' },
     { name: 'GitHub 数据同步', status: '已关联', note: '项目数据以 data/ 目录承载。' },
   ],
 };
@@ -155,9 +159,63 @@ export const progressItems = [
   { id: 'DY-003', task: '地块矢量坐标与工程点位', status: '未开工', done: 0, amount: 86000 },
 ];
 
+const aiAnalysisFindings = [
+  {
+    id: 'ai-waterproofing-001',
+    source: '施工组织设计、设计图纸、防渗专项说明',
+    title: '防渗衬砌专项结构建议',
+    status: '待项目管理者确认',
+    parentId: 'civil-unit',
+    targets: ['单位工程', '分部工程', '单元工程', '时标网络图', '质量控制图', '档案编码'],
+    summary: '硅基流动先识别设计图纸中的防渗衬砌范围，DeepSeek R1 再结合施工组织设计和防渗专项说明，建议把防渗衬砌单独列为分部工程。',
+    generatedNodes: [
+      { id: 'ai-division-waterproofing', name: '防渗衬砌分部工程', type: '分部工程', status: 'AI 待确认' },
+      { id: 'ai-cell-lining-depth', name: '衬砌厚度检测单元', type: '单元工程', status: 'AI 待确认' },
+      { id: 'ai-cell-hidden-acceptance', name: '防渗隐蔽验收单元', type: '单元工程', status: 'AI 待确认' },
+    ],
+  },
+  {
+    id: 'ai-safety-002',
+    source: '安全专项方案、现场照片、临时用电检查表',
+    title: '临时用电安全隐患树建议',
+    status: '待项目管理者确认',
+    parentId: 'electrical-unit',
+    targets: ['单位工程', '分部工程', '单元工程', '时标网络图', '质量控制图', '档案编码'],
+    summary: '硅基流动先识别现场照片中的临时用电设施和风险点，DeepSeek R1 再结合安全专项方案与检查表，生成临电验收、漏保测试、接地复核三类安全风险节点。',
+    generatedNodes: [
+      { id: 'ai-division-temp-power', name: '临时用电安全分部工程', type: '分部工程', status: 'AI 待确认' },
+      { id: 'ai-cell-leakage-test', name: '漏电保护测试单元', type: '单元工程', status: 'AI 待确认' },
+      { id: 'ai-cell-grounding-review', name: '接地复核单元', type: '单元工程', status: 'AI 待确认' },
+    ],
+  },
+  {
+    id: 'ai-archive-003',
+    source: '批复文件、概预算、测绘成果、归档目录',
+    title: '档案编码与公开摘要建议',
+    status: '待项目管理者确认',
+    parentId: 'archive-unit',
+    targets: ['单位工程', '分部工程', '单元工程', '时标网络图', '质量控制图', '档案编码'],
+    summary: '建议按立项批复、测绘成果、质量验收和公众公开摘要建立档案编码，确认后进入档案资料管理。',
+    generatedNodes: [
+      { id: 'ai-division-archive-code', name: '档案编码分部工程', type: '分部工程', status: 'AI 待确认' },
+      { id: 'ai-cell-approval-files', name: '批复文件归档单元', type: '单元工程', status: 'AI 待确认' },
+      { id: 'ai-cell-public-summary', name: '公众公开摘要单元', type: '单元工程', status: 'AI 待确认' },
+    ],
+  },
+];
+
 export function flattenTree(node, depth = 0, parentId = null) {
   const current = { ...node, depth, parentId };
   return [current, ...(node.children ?? []).flatMap((child) => flattenTree(child, depth + 1, node.id))];
+}
+
+function findTreeNode(node, id) {
+  if (node.id === id) return node;
+  for (const child of node.children ?? []) {
+    const match = findTreeNode(child, id);
+    if (match) return match;
+  }
+  return null;
 }
 
 export function getStats(project = currentProject) {
@@ -173,4 +231,38 @@ export function getStats(project = currentProject) {
 export function getSecondaryItems(moduleId) {
   if (moduleId === 'structure') return flattenTree(currentProject.tree).filter((node) => node.depth > 1);
   return moduleDetails[moduleId] ?? [];
+}
+
+export function getAiFindings() {
+  return structuredClone(aiAnalysisFindings);
+}
+
+export function getPendingAiFindings() {
+  return getAiFindings().filter((finding) => finding.status === '待项目管理者确认');
+}
+
+export function confirmAiFindingIntoTree(project, findingId) {
+  const finding = aiAnalysisFindings.find((item) => item.id === findingId);
+  if (!finding) {
+    throw new Error(`未找到 AI 成果：${findingId}`);
+  }
+
+  const parent = findTreeNode(project.tree, finding.parentId);
+  if (!parent) {
+    throw new Error(`未找到写入节点：${finding.parentId}`);
+  }
+
+  const existingIds = new Set(flattenTree(project.tree).map((node) => node.id));
+  const nodesToAdd = finding.generatedNodes
+    .filter((node) => !existingIds.has(node.id))
+    .map((node) => ({ ...node, status: '已确认' }));
+
+  parent.children = [...(parent.children ?? []), ...nodesToAdd];
+  finding.status = '已确认写入';
+  finding.confirmedAt = new Date().toISOString();
+
+  return {
+    project,
+    confirmedFinding: structuredClone(finding),
+  };
 }
